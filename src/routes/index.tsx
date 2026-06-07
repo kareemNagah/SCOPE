@@ -37,8 +37,9 @@ function StudioLanding() {
     <div className="relative min-h-screen">
       <MeshBackground />
       <TopNav />
+      <JourneyStepper />
 
-      <main className="px-6 pt-40">
+      <main className="px-6 pt-44">
         <section className="mx-auto max-w-[1200px] text-center">
           <h1 className="font-display text-[clamp(2.75rem,7vw,6rem)] leading-[1.02] tracking-tight text-foreground">
             What brand will
