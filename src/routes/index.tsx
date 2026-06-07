@@ -4,6 +4,7 @@ import { TopNav } from "@/components/scope/TopNav";
 import { PromptBar } from "@/components/scope/PromptBar";
 import { MoodboardGrid } from "@/components/scope/MoodboardGrid";
 import { RecentStrategies } from "@/components/scope/RecentStrategies";
+import { JourneyStepper } from "@/components/scope/Journey";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -37,8 +38,9 @@ function StudioLanding() {
     <div className="relative min-h-screen">
       <MeshBackground />
       <TopNav />
+      <JourneyStepper />
 
-      <main className="px-6 pt-40">
+      <main className="px-6 pt-44">
         <section className="mx-auto max-w-[1200px] text-center">
           <h1 className="font-display text-[clamp(2.75rem,7vw,6rem)] leading-[1.02] tracking-tight text-foreground">
             What brand will

@@ -9,8 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LogoRouteImport } from './routes/logo'
+import { Route as IdentityRouteImport } from './routes/identity'
+import { Route as ExportRouteImport } from './routes/export'
+import { Route as CanvasRouteImport } from './routes/canvas'
 import { Route as IndexRouteImport } from './routes/index'
 
+const LogoRoute = LogoRouteImport.update({
+  id: '/logo',
+  path: '/logo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IdentityRoute = IdentityRouteImport.update({
+  id: '/identity',
+  path: '/identity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExportRoute = ExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CanvasRoute = CanvasRouteImport.update({
+  id: '/canvas',
+  path: '/canvas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +43,72 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/canvas': typeof CanvasRoute
+  '/export': typeof ExportRoute
+  '/identity': typeof IdentityRoute
+  '/logo': typeof LogoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/canvas': typeof CanvasRoute
+  '/export': typeof ExportRoute
+  '/identity': typeof IdentityRoute
+  '/logo': typeof LogoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/canvas': typeof CanvasRoute
+  '/export': typeof ExportRoute
+  '/identity': typeof IdentityRoute
+  '/logo': typeof LogoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/canvas' | '/export' | '/identity' | '/logo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/canvas' | '/export' | '/identity' | '/logo'
+  id: '__root__' | '/' | '/canvas' | '/export' | '/identity' | '/logo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CanvasRoute: typeof CanvasRoute
+  ExportRoute: typeof ExportRoute
+  IdentityRoute: typeof IdentityRoute
+  LogoRoute: typeof LogoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/logo': {
+      id: '/logo'
+      path: '/logo'
+      fullPath: '/logo'
+      preLoaderRoute: typeof LogoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/identity': {
+      id: '/identity'
+      path: '/identity'
+      fullPath: '/identity'
+      preLoaderRoute: typeof IdentityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/export': {
+      id: '/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof ExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/canvas': {
+      id: '/canvas'
+      path: '/canvas'
+      fullPath: '/canvas'
+      preLoaderRoute: typeof CanvasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +121,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CanvasRoute: CanvasRoute,
+  ExportRoute: ExportRoute,
+  IdentityRoute: IdentityRoute,
+  LogoRoute: LogoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
