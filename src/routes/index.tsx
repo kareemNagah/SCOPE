@@ -4,6 +4,7 @@ import { TopNav } from "@/components/scope/TopNav";
 import { PromptBar } from "@/components/scope/PromptBar";
 import { MoodboardGrid } from "@/components/scope/MoodboardGrid";
 import { RecentStrategies } from "@/components/scope/RecentStrategies";
+import { JourneyStepper } from "@/components/scope/Journey";
 
 export const Route = createFileRoute("/")({
   head: () => ({
