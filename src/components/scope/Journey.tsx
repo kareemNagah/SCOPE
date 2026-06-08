@@ -9,11 +9,12 @@ export type JourneyStep = {
 };
 
 export const journey: JourneyStep[] = [
-  { id: "brief",    label: "Brief",    sub: "Tell us the spark",      to: "/" },
-  { id: "canvas",   label: "Strategy", sub: "Edit the 6 pillars",     to: "/canvas" },
-  { id: "identity", label: "Identity", sub: "Palettes & typography",  to: "/identity" },
-  { id: "logo",     label: "Logo",     sub: "Generate the mark",      to: "/logo" },
-  { id: "export",   label: "Export",   sub: "Portable Brain",         to: "/export" },
+  { id: "brief",     label: "Brief",     sub: "Tell us the spark",         to: "/" },
+  { id: "canvas",    label: "Strategy",  sub: "Edit the 6 pillars in 3D",  to: "/canvas" },
+  { id: "identity",  label: "Identity",  sub: "Palettes & typography",     to: "/identity" },
+  { id: "marketing", label: "Marketing", sub: "Spectral analysis",         to: "/marketing" },
+  { id: "logo",      label: "Logo",      sub: "Generate the mark",         to: "/logo" },
+  { id: "export",    label: "Export",    sub: "Portable Brain",            to: "/export" },
 ];
 
 export function JourneyStepper() {

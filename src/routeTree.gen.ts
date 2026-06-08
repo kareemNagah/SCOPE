@@ -9,12 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SigninRouteImport } from './routes/signin'
+import { Route as MarketingRouteImport } from './routes/marketing'
 import { Route as LogoRouteImport } from './routes/logo'
 import { Route as IdentityRouteImport } from './routes/identity'
 import { Route as ExportRouteImport } from './routes/export'
 import { Route as CanvasRouteImport } from './routes/canvas'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketingRoute = MarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LogoRoute = LogoRouteImport.update({
   id: '/logo',
   path: '/logo',
@@ -47,6 +65,9 @@ export interface FileRoutesByFullPath {
   '/export': typeof ExportRoute
   '/identity': typeof IdentityRoute
   '/logo': typeof LogoRoute
+  '/marketing': typeof MarketingRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +75,9 @@ export interface FileRoutesByTo {
   '/export': typeof ExportRoute
   '/identity': typeof IdentityRoute
   '/logo': typeof LogoRoute
+  '/marketing': typeof MarketingRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +86,41 @@ export interface FileRoutesById {
   '/export': typeof ExportRoute
   '/identity': typeof IdentityRoute
   '/logo': typeof LogoRoute
+  '/marketing': typeof MarketingRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/canvas' | '/export' | '/identity' | '/logo'
+  fullPaths:
+    | '/'
+    | '/canvas'
+    | '/export'
+    | '/identity'
+    | '/logo'
+    | '/marketing'
+    | '/signin'
+    | '/signup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/canvas' | '/export' | '/identity' | '/logo'
-  id: '__root__' | '/' | '/canvas' | '/export' | '/identity' | '/logo'
+  to:
+    | '/'
+    | '/canvas'
+    | '/export'
+    | '/identity'
+    | '/logo'
+    | '/marketing'
+    | '/signin'
+    | '/signup'
+  id:
+    | '__root__'
+    | '/'
+    | '/canvas'
+    | '/export'
+    | '/identity'
+    | '/logo'
+    | '/marketing'
+    | '/signin'
+    | '/signup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,10 +129,34 @@ export interface RootRouteChildren {
   ExportRoute: typeof ExportRoute
   IdentityRoute: typeof IdentityRoute
   LogoRoute: typeof LogoRoute
+  MarketingRoute: typeof MarketingRoute
+  SigninRoute: typeof SigninRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketing': {
+      id: '/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof MarketingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/logo': {
       id: '/logo'
       path: '/logo'
@@ -125,6 +201,9 @@ const rootRouteChildren: RootRouteChildren = {
   ExportRoute: ExportRoute,
   IdentityRoute: IdentityRoute,
   LogoRoute: LogoRoute,
+  MarketingRoute: MarketingRoute,
+  SigninRoute: SigninRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
