@@ -23,7 +23,7 @@ function ExportPage() {
   return (
     <StudioShell
       stepId="export"
-      eyebrow="Step 5 · Portable Brain"
+      eyebrow="Step 6 · Portable Brain"
       title="Your brand, packaged."
       intro="Everything you've built, zipped and ready to share with your team or feed into any LLM."
     >

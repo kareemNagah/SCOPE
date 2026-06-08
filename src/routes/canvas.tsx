@@ -1,208 +1,117 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState, useEffect, useCallback } from "react";
+import { lazy, Suspense, useState } from "react";
 import { StudioShell } from "@/components/scope/StudioShell";
-import { Sparkles, Pencil, RotateCcw, Check, X } from "lucide-react";
+import { CopilotChat } from "@/components/scope/CopilotChat";
+import { initialNodes3D, type Node3D } from "@/components/scope/BrandGraph3D";
+import { Sparkles, RotateCcw, X, Check } from "lucide-react";
+
+const BrandGraph3D = lazy(() =>
+  import("@/components/scope/BrandGraph3D").then((m) => ({ default: m.BrandGraph3D })),
+);
 
 export const Route = createFileRoute("/canvas")({
   head: () => ({
     meta: [
-      { title: "SCOPE — Strategy Canvas" },
-      { name: "description", content: "Edit your brand's 6 strategic pillars on the SCOPE node canvas." },
+      { title: "SCOPE — 3D Strategy Canvas" },
+      { name: "description", content: "Edit your brand pillars in an interactive 3D graph with your AI copilot." },
     ],
   }),
   component: CanvasPage,
 });
 
-type NodeT = {
-  id: string;
-  title: string;
-  value: string;
-  x: number; // percent
-  y: number; // percent
-};
-
-const initialNodes: NodeT[] = [
-  { id: "mission",  title: "Mission",  value: "Equip corporate athletes with regenerative gear.",          x: 50, y: 14 },
-  { id: "vision",   title: "Vision",   value: "Make sustainability the default in performance wear.",      x: 83, y: 30 },
-  { id: "persona",  title: "Persona",  value: "Urban women 25–35, corporate athletes.",                    x: 83, y: 70 },
-  { id: "voice",    title: "Voice",    value: "Calm, confident, technical.",                               x: 50, y: 86 },
-  { id: "values",   title: "Values",   value: "Honesty · Craft · Longevity.",                              x: 17, y: 70 },
-  { id: "promise",  title: "Promise",  value: "Built to last. Designed to disappear into your day.",       x: 17, y: 30 },
-];
-
 function CanvasPage() {
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes] = useState<NodeT[]>(initialNodes);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [nodes, setNodes] = useState<Node3D[]>(initialNodes3D);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
-  const onPointerDown = (id: string) => (e: React.PointerEvent) => {
-    if (editingId) return;
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-    setDragId(id);
-  };
+  const active = nodes.find((n) => n.id === selectedId) ?? null;
 
-  const onPointerMove = useCallback((e: PointerEvent) => {
-    if (!dragId || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setNodes((prev) =>
-      prev.map((n) =>
-        n.id === dragId
-          ? { ...n, x: Math.max(8, Math.min(92, x)), y: Math.max(8, Math.min(92, y)) }
-          : n,
-      ),
-    );
-  }, [dragId]);
-
-  const stopDrag = useCallback(() => setDragId(null), []);
-
-  useEffect(() => {
-    if (!dragId) return;
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", stopDrag);
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", stopDrag);
-    };
-  }, [dragId, onPointerMove, stopDrag]);
-
-  const startEdit = (n: NodeT) => {
-    setEditingId(n.id);
-    setDraft(n.value);
+  const startEdit = () => {
+    if (!active) return;
+    setDraft(active.value);
+    setEditing(true);
   };
   const saveEdit = () => {
-    if (!editingId) return;
-    setNodes((prev) => prev.map((n) => (n.id === editingId ? { ...n, value: draft } : n)));
-    setEditingId(null);
+    if (!active) return;
+    setNodes((prev) => prev.map((n) => (n.id === active.id ? { ...n, value: draft } : n)));
+    setEditing(false);
   };
 
   return (
     <StudioShell
       stepId="canvas"
       eyebrow="Step 2 · Brand Architect"
-      title="Your strategy, mapped"
-      intro="Drag any node to rearrange. Click the pencil to refine — downstream artefacts flag what needs to update."
+      title="Your strategy, in 3D"
+      intro="Rotate the graph. Click any node to inspect or refine — chat with the Brand Copilot to propose edits."
     >
-      <div
-        ref={canvasRef}
-        className="glass relative mx-auto h-[600px] touch-none select-none overflow-hidden rounded-3xl"
-      >
-        {/* connecting lines (live) */}
-        <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
-          <defs>
-            <linearGradient id="line-grad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="var(--scope-purple)" stopOpacity=".75" />
-              <stop offset="1" stopColor="var(--scope-blue)" stopOpacity=".75" />
-            </linearGradient>
-          </defs>
-          {nodes.map((n) => (
-            <line
-              key={n.id}
-              x1="50%" y1="50%"
-              x2={`${n.x}%`} y2={`${n.y}%`}
-              stroke="url(#line-grad)"
-              strokeWidth={dragId === n.id ? 2 : 1.5}
-              strokeDasharray="4 6"
-              style={{ animation: "pulse-soft 3s ease-in-out infinite" }}
-            />
-          ))}
-        </svg>
-
-        {/* center hub */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div
-            className="flex h-32 w-32 items-center justify-center rounded-full text-white shadow-[var(--shadow-prism)]"
-            style={{ background: "var(--gradient-brand)" }}
-          >
-            <div className="text-center">
-              <p className="text-[10px] uppercase tracking-[0.2em] opacity-80">Core</p>
-              <p className="font-display text-lg leading-tight">Brand DNA</p>
+      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+        {/* 3D canvas */}
+        <div className="relative h-[600px] overflow-hidden rounded-3xl shadow-[var(--shadow-prism)]">
+          <Suspense fallback={
+            <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_30%_30%,rgba(159,122,234,0.25),rgba(15,8,30,0.95)_70%)]">
+              <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/30 border-t-white" />
             </div>
-          </div>
-        </div>
+          }>
+            <BrandGraph3D nodes={nodes} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setEditing(false); }} />
+          </Suspense>
 
-        {/* nodes */}
-        {nodes.map((n) => {
-          const isDragging = dragId === n.id;
-          const isEditing = editingId === n.id;
-          return (
-            <div
-              key={n.id}
-              className={`glass absolute w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-2xl p-3 transition-shadow ${
-                isDragging ? "cursor-grabbing shadow-[var(--shadow-prism)]" : "cursor-grab"
-              }`}
-              style={{
-                left: `${n.x}%`,
-                top: `${n.y}%`,
-                zIndex: isDragging || isEditing ? 20 : 10,
-              }}
-              onPointerDown={onPointerDown(n.id)}
-            >
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  {n.title}
-                </span>
-                {!isEditing && (
-                  <button
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => startEdit(n)}
-                    className="rounded p-1 text-muted-foreground hover:bg-white/70 hover:text-foreground"
-                    aria-label={`Edit ${n.title}`}
-                  >
-                    <Pencil size={11} />
-                  </button>
-                )}
+          {/* Selected node panel */}
+          {active && (
+            <div className="glass absolute left-4 top-4 w-[280px] rounded-2xl p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{active.title}</span>
+                <button onClick={() => setSelectedId(null)} className="rounded p-1 text-muted-foreground hover:bg-white/60" aria-label="Close">
+                  <X size={13} />
+                </button>
               </div>
-
-              {isEditing ? (
-                <div onPointerDown={(e) => e.stopPropagation()}>
+              {editing ? (
+                <>
                   <textarea
                     autoFocus
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    rows={3}
-                    className="w-full resize-none rounded-md border border-border bg-white/80 p-2 text-[12.5px] text-foreground outline-none focus:border-foreground/40"
+                    rows={4}
+                    className="mt-2 w-full resize-none rounded-md border border-border bg-white/80 p-2 text-[12.5px] text-foreground outline-none focus:border-foreground/40"
                   />
-                  <div className="mt-1.5 flex justify-end gap-1">
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-white/70"
-                      aria-label="Cancel"
-                    >
-                      <X size={13} />
-                    </button>
-                    <button
-                      onClick={saveEdit}
-                      className="bg-gradient-cta flex h-6 w-6 items-center justify-center rounded-md text-white"
-                      aria-label="Save"
-                    >
-                      <Check size={13} />
+                  <div className="mt-2 flex justify-end gap-1">
+                    <button onClick={() => setEditing(false)} className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-white/60">Cancel</button>
+                    <button onClick={saveEdit} className="bg-gradient-cta inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-white">
+                      <Check size={12} /> Save
                     </button>
                   </div>
-                </div>
+                </>
               ) : (
-                <p className="text-[12.5px] leading-snug text-foreground">{n.value}</p>
+                <>
+                  <p className="mt-2 text-[13px] leading-snug text-foreground">{active.value}</p>
+                  <button onClick={startEdit} className="mt-3 w-full rounded-md border border-border bg-white/70 py-1.5 text-xs text-foreground hover:bg-white">
+                    Refine this pillar
+                  </button>
+                </>
               )}
             </div>
-          );
-        })}
+          )}
 
-        {/* reset */}
-        <button
-          onClick={() => setNodes(initialNodes)}
-          className="glass absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-foreground hover:bg-white"
-        >
-          <RotateCcw size={12} />
-          Reset layout
-        </button>
+          {/* Reset */}
+          <button
+            onClick={() => { setNodes(initialNodes3D); setSelectedId(null); setEditing(false); }}
+            className="glass absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-foreground hover:bg-white"
+          >
+            <RotateCcw size={12} /> Reset
+          </button>
+
+          <div className="pointer-events-none absolute bottom-4 left-4 text-[10px] uppercase tracking-[0.18em] text-white/70">
+            Drag to orbit · scroll to zoom
+          </div>
+        </div>
+
+        {/* Chat copilot */}
+        <CopilotChat activeNodeTitle={active?.title ?? null} />
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <Sparkles size={13} />
-        Drag nodes to reframe. Edits propagate to Identity & Logo automatically.
+        Edits flag downstream Identity, Marketing & Logo as “Needs Update.”
       </div>
     </StudioShell>
   );
