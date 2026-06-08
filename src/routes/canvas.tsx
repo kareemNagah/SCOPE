@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useState } from "react";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { StudioShell } from "@/components/scope/StudioShell";
 import { CopilotChat } from "@/components/scope/CopilotChat";
-import { initialNodes3D, type Node3D } from "@/components/scope/BrandGraph3D";
+import { initialNodes3D, backendNodesToGraph, type Node3D } from "@/components/scope/BrandGraph3D";
 import { Sparkles, RotateCcw, X, Check } from "lucide-react";
+import { api, type BrandNode } from "@/lib/api";
 
 const BrandGraph3D = lazy(() =>
   import("@/components/scope/BrandGraph3D").then((m) => ({ default: m.BrandGraph3D })),
@@ -20,10 +21,25 @@ export const Route = createFileRoute("/canvas")({
 });
 
 function CanvasPage() {
+  const search = useSearch({ strict: false }) as { session?: string };
+  const [sessionId] = useState(() => search.session || crypto.randomUUID());
+  
   const [nodes, setNodes] = useState<Node3D[]>(initialNodes3D);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+
+  useEffect(() => {
+    if (search.session) {
+      api.getNodes(search.session).then((backendNodes) => {
+        if (backendNodes && backendNodes.length > 0) {
+          setNodes(backendNodesToGraph(backendNodes));
+        }
+      }).catch(err => {
+        console.error("Failed to load session nodes:", err);
+      });
+    }
+  }, [search.session]);
 
   const active = nodes.find((n) => n.id === selectedId) ?? null;
 
@@ -35,6 +51,12 @@ function CanvasPage() {
   const saveEdit = () => {
     if (!active) return;
     setNodes((prev) => prev.map((n) => (n.id === active.id ? { ...n, value: draft } : n)));
+    setEditing(false);
+  };
+
+  const handleNodesUpdate = (backendNodes: BrandNode[]) => {
+    setNodes(backendNodesToGraph(backendNodes));
+    setSelectedId(null);
     setEditing(false);
   };
 
@@ -106,7 +128,11 @@ function CanvasPage() {
         </div>
 
         {/* Chat copilot */}
-        <CopilotChat activeNodeTitle={active?.title ?? null} />
+        <CopilotChat 
+          activeNodeTitle={active?.title ?? null} 
+          sessionId={sessionId}
+          onNodesUpdate={handleNodesUpdate}
+        />
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">

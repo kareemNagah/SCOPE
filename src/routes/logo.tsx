@@ -1,7 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { StudioShell } from "@/components/scope/StudioShell";
-import { Download, Check } from "lucide-react";
+import { Download, Check, Loader2 } from "lucide-react";
+import { api, type LogoResult } from "@/lib/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/logo")({
   head: () => ({
@@ -52,10 +54,50 @@ function LogoMark({ size = 40, colors }: { size?: number; colors: string[] }) {
 }
 
 function LogoPage() {
+  const search = useSearch({ strict: false }) as { session?: string };
+  const sessionId = search.session || "default_session";
+  
   const [paletteId, setPaletteId] = useState(palettes[0].id);
   const [fontId, setFontId] = useState(fontPairs[1].id);
   const [conceptId, setConceptId] = useState(concepts[0].id);
   const [wordmark, setWordmark] = useState("SCOPE");
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<LogoResult | null>(null);
+
+  useEffect(() => {
+    if (search.session) {
+      api.getLogo(search.session).then((res) => {
+        if (res) {
+          setResult(res);
+        }
+      });
+    }
+  }, [search.session]);
+
+  const handleGenerate = async () => {
+    const palette = palettes.find((p) => p.id === paletteId)!;
+    const font = fontPairs.find((f) => f.id === fontId)!;
+    const concept = concepts.find((c) => c.id === conceptId)!;
+    
+    setIsLoading(true);
+    try {
+      const res = await api.generateLogo({
+        session_id: sessionId,
+        wordmark,
+        concept: concept.name,
+        palette_name: palette.name,
+        font_name: font.display
+      });
+      setResult(res);
+      toast.success("Logo concept generated!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate logo concept.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const palette = palettes.find((p) => p.id === paletteId)!;
   const font = fontPairs.find((f) => f.id === fontId)!;
@@ -183,13 +225,24 @@ function LogoPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-[1fr_auto] gap-3">
-            <button className="bg-gradient-cta inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_24px_-6px_rgba(255,90,120,0.55)] transition hover:brightness-105">
-              Generate Logo.
+            <button 
+              onClick={handleGenerate}
+              disabled={isLoading}
+              className="bg-gradient-cta inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_24px_-6px_rgba(255,90,120,0.55)] transition hover:brightness-105 disabled:opacity-50"
+            >
+              {isLoading ? <Loader2 size={16} className="animate-spin" /> : "Generate Logo."}
             </button>
             <button className="glass inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.14em] text-foreground transition hover:bg-white">
               <Download size={15} /> Download EPS
             </button>
           </div>
+          
+          {result && (
+            <div className="mt-4 glass rounded-xl p-4">
+              <h3 className="font-display text-lg text-foreground">"{result.tagline}"</h3>
+              <p className="mt-2 text-[13px] text-foreground leading-relaxed">{result.concept_description}</p>
+            </div>
+          )}
 
           <div className="mt-6">
             <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Variations grid</p>
@@ -205,6 +258,11 @@ function LogoPage() {
                   <p className="mt-2 text-[11px] text-muted-foreground capitalize">
                     {layout === "row" ? "Horizontal" : layout === "col" ? "Stacked" : layout === "icon" ? "Icon Only" : "Monochrome"}
                   </p>
+                  {result && (
+                    <p className="mt-1 text-[10px] text-foreground/70">
+                      {result.variations.find(v => v.name.toLowerCase() === (layout === "row" ? "horizontal" : layout === "col" ? "stacked" : layout === "icon" ? "icon only" : "monochrome"))?.description}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

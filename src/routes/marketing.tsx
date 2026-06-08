@@ -1,7 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { StudioShell } from "@/components/scope/StudioShell";
 import { Upload, Check, ChevronRight, Sparkles, AlertTriangle, RotateCcw } from "lucide-react";
+import { api, type MarketingResult } from "@/lib/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/marketing")({
   head: () => ({
@@ -23,7 +25,34 @@ const steps = [
 ];
 
 function MarketingPage() {
+  const search = useSearch({ strict: false }) as { session?: string };
+  const sessionId = search.session || "default_session";
   const [step, setStep] = useState(1);
+  const [data, setData] = useState<MarketingResult | null>(null);
+
+  useEffect(() => {
+    if (search.session) {
+      api.getMarketing(search.session).then((res) => {
+        if (res) {
+          setData(res);
+          setStep(4); // Skip to blueprint if we already have data
+        }
+      });
+    }
+  }, [search.session]);
+
+  const handleRunAnalysis = async (fields: any) => {
+    setStep(3);
+    try {
+      const res = await api.analyzeMarketing({ session_id: sessionId, ...fields });
+      setData(res);
+      setStep(4);
+    } catch (err) {
+      console.error(err);
+      toast.error("Analysis failed. Check the backend logs.");
+      setStep(2);
+    }
+  };
 
   return (
     <StudioShell
@@ -33,16 +62,17 @@ function MarketingPage() {
       intro="Refract a product into a market blueprint, audience personas, and ad concepts you can stress-test."
     >
       <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-        {/* Vertical stepper */}
         <aside className="glass sticky top-44 h-fit rounded-2xl p-3">
           <ol className="space-y-1">
             {steps.map((s) => {
               const active = s.id === step;
-              const done = s.id < step;
+              const done = s.id < step || (s.id >= 4 && data !== null);
               return (
                 <li key={s.id}>
                   <button
-                    onClick={() => setStep(s.id)}
+                    onClick={() => {
+                      if (done || s.id === 1 || s.id === 2) setStep(s.id);
+                    }}
                     className={`flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition ${
                       active ? "bg-foreground text-background" : done ? "text-foreground hover:bg-white/60" : "text-muted-foreground hover:bg-white/60"
                     }`}
@@ -50,7 +80,7 @@ function MarketingPage() {
                     <span className={`mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-[10px] font-medium ${
                       active ? "bg-background text-foreground" : done ? "bg-foreground text-background" : "border border-border bg-white/70 text-muted-foreground"
                     }`}>
-                      {done ? <Check size={11} /> : s.id}
+                      {done && !active ? <Check size={11} /> : s.id}
                     </span>
                     <span>
                       <span className="block text-[13px] font-medium">{s.name}</span>
@@ -63,14 +93,13 @@ function MarketingPage() {
           </ol>
         </aside>
 
-        {/* Active step */}
         <div className="min-h-[480px]">
           {step === 1 && <StepUpload onNext={() => setStep(2)} />}
-          {step === 2 && <StepContext onNext={() => setStep(3)} />}
-          {step === 3 && <StepAnalysis onDone={() => setStep(4)} />}
-          {step === 4 && <StepBlueprint onNext={() => setStep(5)} />}
-          {step === 5 && <StepPersonas onNext={() => setStep(6)} />}
-          {step === 6 && <StepHooks />}
+          {step === 2 && <StepContext onNext={handleRunAnalysis} />}
+          {step === 3 && <StepAnalysis />}
+          {step === 4 && data && <StepBlueprint data={data} onNext={() => setStep(5)} />}
+          {step === 5 && data && <StepPersonas data={data} onNext={() => setStep(6)} />}
+          {step === 6 && data && <StepHooks data={data} />}
         </div>
       </div>
     </StudioShell>
@@ -85,7 +114,6 @@ function NextBtn({ onClick, label = "Continue" }: { onClick: () => void; label?:
   );
 }
 
-/* ───────── Step 1 ───────── */
 function StepUpload({ onNext }: { onNext: () => void }) {
   const [name, setName] = useState<string | null>(null);
   return (
@@ -103,47 +131,50 @@ function StepUpload({ onNext }: { onNext: () => void }) {
   );
 }
 
-/* ───────── Step 2 ───────── */
-function StepContext({ onNext }: { onNext: () => void }) {
-  const fields = [
-    { label: "Materials",      placeholder: "Recycled poly, merino blend…" },
-    { label: "Pricing tier",   placeholder: "Mass · Premium · Luxury" },
-    { label: "Primary region", placeholder: "EU · MENA · NA…" },
-    { label: "Channels",       placeholder: "DTC · Wholesale · Retail" },
-    { label: "Category",       placeholder: "Performance wear" },
-    { label: "Stage",          placeholder: "Zero-to-One · Relaunch · Scale" },
-  ];
+function StepContext({ onNext }: { onNext: (fields: any) => void }) {
+  const [fields, setFields] = useState({
+    materials: "", pricing_tier: "", region: "", channels: "", category: "", stage: ""
+  });
+  
+  const fieldConfigs = [
+    { key: "materials", label: "Materials", placeholder: "Recycled poly, merino blend…" },
+    { key: "pricing_tier", label: "Pricing tier", placeholder: "Mass · Premium · Luxury" },
+    { key: "region", label: "Primary region", placeholder: "EU · MENA · NA…" },
+    { key: "channels", label: "Channels", placeholder: "DTC · Wholesale · Retail" },
+    { key: "category", label: "Category", placeholder: "Performance wear" },
+    { key: "stage", label: "Stage", placeholder: "Zero-to-One · Relaunch · Scale" },
+  ] as const;
+
   return (
     <div className="glass rounded-3xl p-6">
       <h2 className="font-display text-2xl text-foreground">Prompt Whisperer</h2>
       <p className="mt-1 text-sm text-muted-foreground">Add the context that turns a flat brief into a sharp blueprint.</p>
       <div className="mt-5 grid gap-4 md:grid-cols-2">
-        {fields.map((f) => (
-          <div key={f.label}>
+        {fieldConfigs.map((f) => (
+          <div key={f.key}>
             <label className="text-[11px] font-medium uppercase tracking-[0.16em] text-foreground/80">{f.label}</label>
-            <input placeholder={f.placeholder} className="mt-1 w-full rounded-lg border border-border bg-white/80 px-3 py-2 text-sm outline-none focus:border-foreground/40" />
+            <input 
+              placeholder={f.placeholder} 
+              value={fields[f.key]}
+              onChange={(e) => setFields({...fields, [f.key]: e.target.value})}
+              className="mt-1 w-full rounded-lg border border-border bg-white/80 px-3 py-2 text-sm outline-none focus:border-foreground/40" 
+            />
           </div>
         ))}
       </div>
-      <div className="mt-5 flex justify-end"><NextBtn onClick={onNext} label="Run analysis" /></div>
+      <div className="mt-5 flex justify-end"><NextBtn onClick={() => onNext(fields)} label="Run analysis" /></div>
     </div>
   );
 }
 
-/* ───────── Step 3 ───────── */
-function StepAnalysis({ onDone }: { onDone: () => void }) {
-  const phases = ["Extracting hex palette…", "Locking grid structure…", "Mapping competitor density…", "Synthesising market blueprint…"];
+function StepAnalysis() {
+  const phases = ["Extracting context…", "Aligning LLM weights…", "Synthesising market blueprint…", "Generating personas…"];
   const [phase, setPhase] = useState(0);
+  
   useEffect(() => {
-    const t = setInterval(() => setPhase((p) => p + 1), 900);
+    const t = setInterval(() => setPhase((p) => Math.min(p + 1, phases.length - 1)), 1500);
     return () => clearInterval(t);
   }, []);
-  useEffect(() => {
-    if (phase >= phases.length) {
-      const t = setTimeout(onDone, 400);
-      return () => clearTimeout(t);
-    }
-  }, [phase, onDone, phases.length]);
 
   return (
     <div className="glass flex min-h-[480px] flex-col items-center justify-center rounded-3xl p-6 text-center">
@@ -157,42 +188,41 @@ function StepAnalysis({ onDone }: { onDone: () => void }) {
       </div>
       <p className="mt-6 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Centrifuge · spectral analysis</p>
       <p className="mt-2 font-display text-xl text-foreground">
-        {phases[Math.min(phase, phases.length - 1)]}
+        {phases[phase]}
       </p>
       <div className="mt-4 flex gap-1.5">
         {phases.map((_, i) => (
-          <span key={i} className={`h-1.5 w-8 rounded-full ${i <= phase ? "bg-foreground" : "bg-border"}`} />
+          <span key={i} className={`h-1.5 w-8 rounded-full ${i <= phase ? "bg-foreground" : "bg-border transition-colors duration-500"}`} />
         ))}
       </div>
     </div>
   );
 }
 
-/* ───────── Step 4 ───────── */
-function StepBlueprint({ onNext }: { onNext: () => void }) {
+function StepBlueprint({ data, onNext }: { data: MarketingResult, onNext: () => void }) {
   const cards = [
     {
       title: "Product Identity",
       rows: [
-        ["Category", "Performance wear · Regenerative"],
-        ["Positioning", "Quiet technical · Premium DTC"],
-        ["Signature", "Honesty · Craft · Longevity"],
+        ["Category", data.blueprint.product_identity.category],
+        ["Positioning", data.blueprint.product_identity.positioning],
+        ["Signature", data.blueprint.product_identity.signature],
       ],
     },
     {
       title: "Buying Behavior",
       rows: [
-        ["Trigger", "Post-workout commute · burnout reset"],
-        ["Decision window", "3–7 days · cross-device research"],
-        ["Friction", "Sustainability proof · returns"],
+        ["Trigger", data.blueprint.buying_behavior.trigger],
+        ["Decision window", data.blueprint.buying_behavior.decision_window],
+        ["Friction", data.blueprint.buying_behavior.friction],
       ],
     },
     {
       title: "Category Tension",
       rows: [
-        ["Default", "Loud, performative athleisure"],
-        ["Whitespace", "Calm authority · regenerative proof"],
-        ["Opportunity", "Editorial corporate-athlete narrative"],
+        ["Default", data.blueprint.category_tension.default],
+        ["Whitespace", data.blueprint.category_tension.whitespace],
+        ["Opportunity", data.blueprint.category_tension.opportunity],
       ],
     },
   ];
@@ -217,38 +247,23 @@ function StepBlueprint({ onNext }: { onNext: () => void }) {
           </div>
         ))}
       </div>
-      <div className="flex justify-end"><NextBtn onClick={onNext} label="Generate personas" /></div>
+      <div className="flex justify-end"><NextBtn onClick={onNext} label="View personas" /></div>
     </div>
   );
 }
 
-/* ───────── Step 5 ───────── */
-function StepPersonas({ onNext }: { onNext: () => void }) {
-  const personas = [
-    {
-      tier: "Primary", name: "Maya · 29", role: "Strategy lead, Berlin",
-      grad: "linear-gradient(135deg,#9F7AEA,#4299E1)",
-      jobs: ["Move from desk to studio without changing", "Signal taste without logos", "Buy fewer, better pieces"],
-      channels: ["Instagram", "Substack", "Spotify"],
-    },
-    {
-      tier: "Secondary", name: "Lena · 34", role: "Architect, Milan",
-      grad: "linear-gradient(135deg,#ED64A6,#ED8936)",
-      jobs: ["Layer technical fabrics under tailoring", "Trust origin & repair story", "Avoid throwaway trend cycles"],
-      channels: ["Pinterest", "RA / Boiler Room", "Newsletters"],
-    },
-  ];
+function StepPersonas({ data, onNext }: { data: MarketingResult, onNext: () => void }) {
   return (
     <div className="space-y-4">
       <div className="glass rounded-3xl p-6">
         <h2 className="font-display text-2xl text-foreground">Persona Cards</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Two concrete people you're designing for. Reference them everywhere.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Concrete people you're designing for. Reference them everywhere.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        {personas.map((p) => (
+        {data.personas.map((p) => (
           <div key={p.tier} className="glass rounded-2xl p-5">
             <div className="flex items-center gap-3">
-              <div className="h-14 w-14 rounded-full" style={{ background: p.grad }} />
+              <div className="h-14 w-14 rounded-full" style={{ background: p.gradient || "var(--gradient-brand)" }} />
               <div>
                 <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.tier} persona</p>
                 <p className="text-base font-semibold text-foreground">{p.name}</p>
@@ -271,22 +286,18 @@ function StepPersonas({ onNext }: { onNext: () => void }) {
   );
 }
 
-/* ───────── Step 6 ───────── */
-function StepHooks() {
-  const concepts = [
-    { id: "a", title: "“Crush your morning. Out-pace everyone.”", body: "Hyper-competitive performance copy, neon ad creative.",  alienates: true,  why: "Maya is anti-performative — loud bro-energy reads as opposite of her quiet-authority taste." },
-    { id: "b", title: "“Built to disappear into your day.”",       body: "Editorial photo, single sentence, brand mark bottom-left.", alienates: false, why: "Confident, quiet, on-strategy." },
-    { id: "c", title: "“Repairable. Returnable. Regenerative.”",   body: "Receipt-style typographic poster.",                       alienates: false, why: "Proof-led, fits the sustainability JTBD." },
-  ];
+function StepHooks({ data }: { data: MarketingResult }) {
+  const primaryName = data.personas.find(p => p.tier.toLowerCase() === "primary")?.name.split(" ")[0] || "your primary persona";
+  
   const [pick, setPick] = useState<string | null>(null);
-  const correct = pick ? concepts.find((c) => c.id === pick)!.alienates : null;
+  const correct = pick ? data.hooks.find((c) => c.id === pick)?.alienates : null;
 
   return (
     <div className="space-y-4">
       <div className="glass rounded-3xl p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-display text-2xl text-foreground">Negative Hooks — which one alienates Maya?</h2>
+            <h2 className="font-display text-2xl text-foreground">Negative Hooks — which one alienates {primaryName}?</h2>
             <p className="mt-1 text-sm text-muted-foreground">Pick the concept you think would push the primary persona away.</p>
           </div>
           {pick && (
@@ -297,7 +308,7 @@ function StepHooks() {
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        {concepts.map((c) => {
+        {data.hooks.map((c) => {
           const isPicked = pick === c.id;
           const wrong = isPicked && !c.alienates;
           const right = isPicked && c.alienates;
@@ -309,7 +320,6 @@ function StepHooks() {
                 wrong ? "ring-2 ring-rose-400 animate-pulse" : right ? "ring-2 ring-emerald-400" : "hover:scale-[1.01]"
               }`}
             >
-              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Concept {c.id.toUpperCase()}</p>
               <p className="mt-2 font-display text-lg text-foreground leading-snug">{c.title}</p>
               <p className="mt-2 text-[12.5px] text-muted-foreground">{c.body}</p>
               {isPicked && (
@@ -324,7 +334,7 @@ function StepHooks() {
       </div>
       {pick && (
         <div className={`glass rounded-2xl p-4 text-sm ${correct ? "text-emerald-900" : "text-rose-900"}`}>
-          {correct ? "Nailed it — that's the alienating one. Now you know what NOT to ship." : "Not quite — that concept actually fits Maya. Try again to find the one that alienates her."}
+          {correct ? `Nailed it — that's the alienating one. Now you know what NOT to ship to ${primaryName}.` : `Not quite — that concept actually fits ${primaryName}. Try again to find the one that alienates them.`}
         </div>
       )}
     </div>

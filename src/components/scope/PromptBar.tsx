@@ -1,23 +1,56 @@
 import { useState } from "react";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus, Sparkles, Loader2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export function PromptBar() {
   const [guided, setGuided] = useState(false);
   const [value, setValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleGenerate = async () => {
+    if (!value.trim() || isLoading) return;
+    
+    setIsLoading(true);
+    const sessionId = crypto.randomUUID();
+    
+    try {
+      // Use the [AUTO-GENERATE] shortcut so the AI skips the proposal phase
+      // and immediately generates the 6 nodes.
+      await api.chat([{ role: "user", content: `[AUTO-GENERATE] ${value}` }], sessionId);
+      
+      // Navigate to canvas with the session ID
+      navigate({ to: "/canvas", search: { session: sessionId } });
+    } catch (error) {
+      console.error("Failed to generate:", error);
+      toast.error("Failed to generate brand strategy. Is the backend running?");
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="glass mx-auto flex w-full max-w-[920px] items-center gap-2 rounded-full p-2 pl-5">
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleGenerate();
+          }
+        }}
+        disabled={isLoading}
         placeholder="Describe your brand, audience, or paste a Skill.md…"
-        className="min-w-0 flex-1 bg-transparent py-2 text-[15px] text-foreground placeholder:text-muted-foreground/80 outline-none"
+        className="min-w-0 flex-1 bg-transparent py-2 text-[15px] text-foreground placeholder:text-muted-foreground/80 outline-none disabled:opacity-50"
       />
 
       <button
         type="button"
         onClick={() => setGuided((g) => !g)}
-        className="hidden sm:flex items-center gap-2.5 rounded-full px-3 py-1.5 hover:bg-white/50 transition"
+        disabled={isLoading}
+        className="hidden sm:flex items-center gap-2.5 rounded-full px-3 py-1.5 hover:bg-white/50 transition disabled:opacity-50"
         aria-pressed={guided}
       >
         <span
@@ -41,7 +74,8 @@ export function PromptBar() {
 
       <button
         type="button"
-        className="hidden sm:flex items-center gap-2 rounded-full px-3 py-1.5 hover:bg-white/50 transition"
+        disabled={isLoading}
+        className="hidden sm:flex items-center gap-2 rounded-full px-3 py-1.5 hover:bg-white/50 transition disabled:opacity-50"
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-white/70">
           <Plus size={14} />
@@ -54,9 +88,11 @@ export function PromptBar() {
 
       <button
         type="button"
-        className="bg-gradient-cta inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium text-white shadow-[0_8px_24px_-6px_rgba(255,90,120,0.55)] transition hover:brightness-105 active:scale-[0.98]"
+        onClick={handleGenerate}
+        disabled={isLoading || !value.trim()}
+        className="bg-gradient-cta inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium text-white shadow-[0_8px_24px_-6px_rgba(255,90,120,0.55)] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-50"
       >
-        <Sparkles size={15} />
+        {isLoading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         Generate
       </button>
     </div>

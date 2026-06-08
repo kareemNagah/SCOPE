@@ -13,6 +13,8 @@ export type Node3D = {
 
 const PALETTE = ["#9F7AEA", "#6B46C1", "#4299E1", "#ED64A6", "#ED8936", "#7C3AED"];
 
+import type { BrandNode } from "@/lib/api";
+
 export const initialNodes3D: Node3D[] = [
   { id: "mission",  title: "Mission",  value: "Equip corporate athletes with regenerative gear.",     position: [ 0,  2.4,  0],  color: PALETTE[0] },
   { id: "vision",   title: "Vision",   value: "Make sustainability the default in performance wear.", position: [ 2.4, 1.0,  0.6], color: PALETTE[1] },
@@ -21,6 +23,25 @@ export const initialNodes3D: Node3D[] = [
   { id: "values",   title: "Values",   value: "Honesty · Craft · Longevity.",                         position: [-2.0,-1.4,  0.8], color: PALETTE[4] },
   { id: "promise",  title: "Promise",  value: "Built to last. Designed to disappear.",                position: [-2.4, 1.0, -0.6], color: PALETTE[5] },
 ];
+
+export function backendNodesToGraph(nodes: BrandNode[]): Node3D[] {
+  return nodes.map((n, i) => {
+    const angle = (i / nodes.length) * Math.PI * 2;
+    const radius = 2.4;
+    // Distribute nodes in a circle, with some z-variation
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    const z = (i % 2 === 0 ? 1 : -1) * (0.4 + (i * 0.1));
+    
+    return {
+      id: `${n.type}-${i}`,
+      title: n.title,
+      value: n.content,
+      position: [x, y, z],
+      color: PALETTE[i % PALETTE.length],
+    };
+  });
+}
 
 function CoreSphere() {
   const ref = useRef<THREE.Mesh>(null);
