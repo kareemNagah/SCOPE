@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Image, BarChart2, MoreHorizontal } from "lucide-react";
 import { api, type BrandNode } from "@/lib/api";
 
 type Msg = { id: string; role: "user" | "assistant"; text: string };
@@ -9,7 +9,7 @@ const seed: Msg[] = [
   { id: "2", role: "assistant", text: "Try: \"Make the voice more playful\" or \"Sharpen the mission to one sentence.\"" },
 ];
 
-const quick = [
+const quickTags = [
   "Tighten the mission",
   "Sharpen the voice",
   "Reframe the persona",
@@ -44,12 +44,10 @@ export function CopilotChat({
     setIsLoading(true);
 
     try {
-      // Send the entire chat history so the AI has context
       const chatHistory = [...msgs, user]
-        .filter(m => m.id !== "1" && m.id !== "2") // Don't send the seed messages
+        .filter(m => m.id !== "1" && m.id !== "2")
         .map(m => ({ role: m.role, content: m.text }));
         
-      // Ensure we at least send the user message if history is empty
       if (chatHistory.length === 0) {
           chatHistory.push({ role: "user", content: t });
       }
@@ -81,30 +79,37 @@ export function CopilotChat({
   };
 
   return (
-    <div className="glass flex h-[600px] flex-col rounded-3xl">
-      <div className="flex items-center justify-between border-b border-white/40 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full" style={{ background: "var(--gradient-brand)" }}>
-            <Sparkles size={13} className="text-white" />
+    <div className="flex h-[600px] flex-col rounded-3xl bg-white/95 border border-slate-200/80 shadow-[0_8px_40px_-12px_rgba(80,40,200,0.18)]">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "var(--gradient-brand)" }}>
+            <Sparkles size={14} className="text-white" />
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-foreground leading-tight">Brand Copilot</p>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="text-[13px] font-semibold text-slate-900 leading-tight">Brand Copilot</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
               {activeNodeTitle ? `Editing · ${activeNodeTitle}` : "Live sync · ready"}
             </p>
           </div>
         </div>
-        <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          <button className="text-slate-400 hover:text-slate-600 transition p-1 rounded-lg hover:bg-slate-50">
+            <MoreHorizontal size={16} />
+          </button>
+        </div>
       </div>
 
+      {/* Messages */}
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {msgs.map((m) => (
           <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-[13px] leading-snug ${
+              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-[13px] leading-snug ${
                 m.role === "user"
-                  ? "bg-foreground text-background"
-                  : "bg-white/75 text-foreground border border-white/60"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-50 text-slate-800 border border-slate-100"
               }`}
             >
               {m.text}
@@ -113,23 +118,24 @@ export function CopilotChat({
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-white/75 text-foreground border border-white/60 max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-snug flex items-center gap-1">
-               <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce" />
-               <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: "0.15s" }} />
-               <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: "0.3s" }} />
+            <div className="bg-slate-50 text-slate-800 border border-slate-100 max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-snug flex items-center gap-1.5">
+               <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
+               <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.15s" }} />
+               <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.3s" }} />
             </div>
           </div>
         )}
       </div>
 
-      <div className="border-t border-white/40 px-3 pt-2">
-        <div className="flex flex-wrap gap-1.5 pb-2">
-          {quick.map((q) => (
+      {/* Quick tags */}
+      <div className="px-4 pt-2 pb-1">
+        <div className="flex flex-wrap gap-1.5">
+          {quickTags.map((q) => (
             <button
               key={q}
               onClick={() => send(q)}
               disabled={isLoading}
-              className="rounded-full border border-border bg-white/70 px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-white hover:text-foreground transition disabled:opacity-50"
+              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 hover:border-slate-300 transition disabled:opacity-50"
             >
               {q}
             </button>
@@ -137,26 +143,44 @@ export function CopilotChat({
         </div>
       </div>
 
-      <form
-        onSubmit={(e) => { e.preventDefault(); send(input); }}
-        className="flex items-center gap-2 border-t border-white/40 p-3"
-      >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={isLoading}
-          placeholder="Ask the copilot…"
-          className="flex-1 rounded-full border border-border bg-white/80 px-4 py-2 text-sm outline-none focus:border-foreground/40 disabled:opacity-50"
-        />
-        <button
-          type="submit"
-          disabled={isLoading || !input.trim()}
-          className="bg-gradient-cta flex h-9 w-9 items-center justify-center rounded-full text-white shadow-[0_8px_24px_-6px_rgba(255,90,120,0.55)] transition hover:brightness-105 disabled:opacity-50"
-          aria-label="Send"
-        >
-          <Send size={14} />
-        </button>
-      </form>
+      {/* Input area - creative card style */}
+      <div className="p-3 border-t border-slate-100">
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 focus-within:border-slate-300 focus-within:bg-white transition-all">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+              title="Attach image"
+            >
+              <Image size={15} />
+            </button>
+            <button
+              type="button"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+              title="Chart analysis"
+            >
+              <BarChart2 size={15} />
+            </button>
+          </div>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(input); } }}
+            disabled={isLoading}
+            placeholder="Ask the copilot…"
+            className="flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 outline-none disabled:opacity-50"
+          />
+          <button
+            onClick={() => send(input)}
+            disabled={isLoading || !input.trim()}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-white shadow-sm transition hover:brightness-110 disabled:opacity-40"
+            style={{ background: "var(--gradient-cta)" }}
+            aria-label="Send"
+          >
+            <Send size={14} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -38,7 +38,7 @@ function SignInPage() {
 
         {/* Form */}
         <div className="flex items-center justify-center p-6 lg:p-10">
-          <div className="glass w-full max-w-md rounded-3xl p-8">
+          <div className="w-full max-w-md rounded-3xl p-8 bg-white border border-slate-200 shadow-lg">
             <div className="lg:hidden mb-6"><ScopeLogo /></div>
             <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Welcome back</p>
             <h2 className="mt-1 font-display text-3xl text-foreground">Sign in</h2>

@@ -40,7 +40,7 @@ function IdentityPage() {
     >
       <div className="grid gap-6 md:grid-cols-3">
         {palettes.map((p) => (
-          <button key={p.name} className="glass rounded-2xl p-4 text-left transition hover:scale-[1.01] hover:shadow-[var(--shadow-prism)]">
+          <button key={p.name} className="rounded-2xl p-4 text-left transition bg-white border border-slate-200 shadow-sm hover:scale-[1.01] hover:shadow-[var(--shadow-prism)]">
             <div className="flex gap-1.5">
               {p.colors.map((c) => (
                 <span key={c} className="h-16 flex-1 rounded-md" style={{ background: c }} />
@@ -54,7 +54,7 @@ function IdentityPage() {
 
       <div className="mt-6 grid gap-6 md:grid-cols-3">
         {fonts.map((f) => (
-          <button key={f.display} className="glass rounded-2xl p-5 text-left transition hover:scale-[1.01] hover:shadow-[var(--shadow-prism)]">
+          <button key={f.display} className="rounded-2xl p-5 text-left transition bg-white border border-slate-200 shadow-sm hover:scale-[1.01] hover:shadow-[var(--shadow-prism)]">
             <p className="font-display text-3xl text-foreground" style={{ fontFamily: f.display }}>
               {f.display}
             </p>
@@ -68,7 +68,7 @@ function IdentityPage() {
 
       <div className="mt-6 grid gap-4 md:grid-cols-4">
         {concepts.map((c) => (
-          <button key={c.name} className="glass rounded-2xl p-4 text-left transition hover:scale-[1.01]">
+          <button key={c.name} className="rounded-2xl p-4 text-left transition bg-white border border-slate-200 shadow-sm hover:scale-[1.01] hover:shadow-[var(--shadow-prism)]">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Concept</p>
             <p className="mt-1 text-sm font-medium text-foreground">{c.name}</p>
             <p className="mt-1 text-[12px] text-muted-foreground">{c.desc}</p>

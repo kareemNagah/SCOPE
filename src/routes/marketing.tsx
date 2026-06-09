@@ -154,7 +154,7 @@ function StepUploadAndContext({ onNext }: { onNext: (fields: any) => void }) {
   };
 
   return (
-    <div className="glass rounded-3xl p-6">
+    <div className="rounded-3xl p-6 bg-white border border-slate-200 shadow-sm">
       <div className="grid gap-6 md:grid-cols-[1fr_320px]">
         {/* Left column: upload */}
         <div className="flex flex-col justify-between">
@@ -228,7 +228,7 @@ function StepAnalysis() {
   }, []);
 
   return (
-    <div className="glass flex min-h-[480px] flex-col items-center justify-center rounded-3xl p-6 text-center">
+    <div className="flex min-h-[480px] flex-col items-center justify-center rounded-3xl p-6 text-center bg-white border border-slate-200 shadow-sm">
       <div className="relative h-40 w-40">
         <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent" style={{ borderTopColor: "var(--scope-purple)", borderRightColor: "var(--scope-pink)", animationDuration: "2s" }} />
         <div className="absolute inset-3 animate-spin rounded-full border-2 border-transparent" style={{ borderTopColor: "var(--scope-blue)", animationDuration: "3s", animationDirection: "reverse" }} />
@@ -279,13 +279,13 @@ function StepBlueprint({ data, onNext }: { data: MarketingResult, onNext: () => 
   ];
   return (
     <div className="space-y-4">
-      <div className="glass rounded-3xl p-6">
+      <div className="rounded-3xl p-6 bg-white border border-slate-200 shadow-sm">
         <h2 className="font-display text-2xl text-foreground">Market Blueprint</h2>
         <p className="mt-1 text-sm text-muted-foreground">A JSON-shaped snapshot of how the product lives in its market.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         {cards.map((c) => (
-          <div key={c.title} className="glass rounded-2xl p-5">
+          <div key={c.title} className="rounded-2xl p-5 bg-white border border-slate-200 shadow-sm">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{c.title}</p>
             <dl className="mt-3 space-y-2">
               {c.rows.map(([k, v]) => (
@@ -306,13 +306,13 @@ function StepBlueprint({ data, onNext }: { data: MarketingResult, onNext: () => 
 function StepPersonas({ data, onNext }: { data: MarketingResult, onNext: () => void }) {
   return (
     <div className="space-y-4">
-      <div className="glass rounded-3xl p-6">
+      <div className="rounded-3xl p-6 bg-white border border-slate-200 shadow-sm">
         <h2 className="font-display text-2xl text-foreground">Persona Cards</h2>
         <p className="mt-1 text-sm text-muted-foreground">Concrete people you're designing for. Reference them everywhere.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {data.personas.map((p) => (
-          <div key={p.tier} className="glass rounded-2xl p-5">
+          <div key={p.tier} className="rounded-2xl p-5 bg-white border border-slate-200 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="h-14 w-14 rounded-full" style={{ background: p.gradient || "var(--gradient-brand)" }} />
               <div>
@@ -345,14 +345,14 @@ function StepHooks({ data }: { data: MarketingResult }) {
 
   return (
     <div className="space-y-4">
-      <div className="glass rounded-3xl p-6">
+      <div className="rounded-3xl p-6 bg-white border border-slate-200 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-display text-2xl text-foreground">Stealth Ed: Negative Hooks Selection</h2>
             <p className="mt-1 text-sm text-muted-foreground">Choose the hook concept you believe would alienate {primaryName} based on their Persona Card.</p>
           </div>
           {pick && (
-            <button onClick={() => setPick(null)} className="glass inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-foreground hover:bg-white cursor-pointer">
+             <button onClick={() => setPick(null)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-foreground bg-slate-100 hover:bg-slate-200 transition cursor-pointer">
               <RotateCcw size={12} /> Reset
             </button>
           )}
@@ -367,7 +367,7 @@ function StepHooks({ data }: { data: MarketingResult }) {
             <button
               key={c.id}
               onClick={() => setPick(c.id)}
-              className={`glass rounded-2xl p-5 text-left transition cursor-pointer ${
+              className={`rounded-2xl p-5 text-left transition cursor-pointer bg-white border border-slate-200 shadow-sm ${
                 wrong ? "ring-2 ring-rose-400 animate-pulse" : right ? "ring-2 ring-emerald-400" : "hover:scale-[1.01]"
               }`}
             >
@@ -384,7 +384,7 @@ function StepHooks({ data }: { data: MarketingResult }) {
         })}
       </div>
       {pick && (
-        <div className={`glass rounded-2xl p-4 text-sm ${correct ? "text-emerald-900" : "text-rose-900"}`}>
+         <div className={`rounded-2xl p-4 text-sm bg-white border border-slate-200 shadow-sm ${correct ? "text-emerald-900" : "text-rose-900"}`}>
           {correct ? `Nailed it — that's the alienating one. Now you know what NOT to ship to ${primaryName}.` : `Not quite — that concept actually fits ${primaryName}. Try again to find the one that alienates them.`}
         </div>
       )}

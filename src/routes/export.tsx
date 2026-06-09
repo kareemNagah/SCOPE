@@ -28,7 +28,7 @@ function ExportPage() {
       intro="Everything you've built, zipped and ready to share with your team or feed into any LLM."
     >
       <div className="mx-auto max-w-[640px]">
-        <div className="glass rounded-2xl p-6">
+        <div className="rounded-2xl p-6 bg-white border border-slate-200 shadow-sm">
           <ul className="divide-y divide-border">
             {items.map(({ icon: Icon, label, note }) => (
               <li key={label} className="flex items-center justify-between py-3">

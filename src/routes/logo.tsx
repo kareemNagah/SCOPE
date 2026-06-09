@@ -232,13 +232,13 @@ function LogoPage() {
             >
               {isLoading ? <Loader2 size={16} className="animate-spin" /> : "Generate Logo."}
             </button>
-            <button className="glass inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.14em] text-foreground transition hover:bg-white">
+            <button className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.14em] text-foreground bg-white border border-slate-200 shadow-sm transition hover:bg-slate-50">
               <Download size={15} /> Download EPS
             </button>
           </div>
           
           {result && (
-            <div className="mt-4 glass rounded-xl p-4">
+            <div className="mt-4 rounded-xl p-4 bg-white border border-slate-200 shadow-sm">
               <h3 className="font-display text-lg text-foreground">"{result.tagline}"</h3>
               <p className="mt-2 text-[13px] text-foreground leading-relaxed">{result.concept_description}</p>
             </div>
@@ -248,7 +248,7 @@ function LogoPage() {
             <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Variations grid</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {(["row", "col", "icon", "mono"] as const).map((layout) => (
-                <div key={layout} className="glass rounded-xl p-4 text-center">
+                <div key={layout} className="rounded-xl p-4 text-center bg-white border border-slate-200 shadow-sm">
                   <div className="flex h-16 items-center justify-center gap-2">
                     {layout === "row" && (<><LogoMark colors={palette.colors} /> <span className="font-semibold tracking-tight" style={{ fontFamily: font.stack }}>{wordmark}</span></>)}
                     {layout === "col" && (<div className="flex flex-col items-center"><LogoMark size={28} colors={palette.colors} /><span className="mt-1 text-xs font-semibold tracking-tight" style={{ fontFamily: font.stack }}>{wordmark}</span></div>)}
