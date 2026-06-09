@@ -1,20 +1,18 @@
-import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { lazy, Suspense, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { StudioShell } from "@/components/scope/StudioShell";
 import { CopilotChat } from "@/components/scope/CopilotChat";
 import { initialNodes3D, backendNodesToGraph, type Node3D } from "@/components/scope/BrandGraph3D";
-import { Sparkles, RotateCcw, X, Check } from "lucide-react";
+import { Target, Eye, User, MessageSquare, Shield, Clock, Calendar, Sparkles, RotateCcw, X, Check } from "lucide-react";
 import { api, type BrandNode } from "@/lib/api";
+import RadialOrbitalTimeline, { type TimelineItem } from "@/components/ui/radial-orbital-timeline";
 
-const BrandGraph3D = lazy(() =>
-  import("@/components/scope/BrandGraph3D").then((m) => ({ default: m.BrandGraph3D })),
-);
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/canvas")({
   head: () => ({
     meta: [
-      { title: "SCOPE — 3D Strategy Canvas" },
-      { name: "description", content: "Edit your brand pillars in an interactive 3D graph with your AI copilot." },
+      { title: "SCOPE — Strategy Canvas" },
+      { name: "description", content: "Edit your brand pillars in an interactive orbital timeline with your AI copilot." },
     ],
   }),
   component: CanvasPage,
@@ -28,6 +26,42 @@ function CanvasPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+
+  // Map nodes dynamically to the timeline data format
+  const timelineData: TimelineItem[] = nodes.map((node, i) => {
+    const status = i < 2 ? "completed" : i === 2 ? "in-progress" : "pending";
+    
+    let icon = Calendar;
+    const lowerTitle = node.title.toLowerCase();
+    if (lowerTitle.includes("mission") || lowerTitle.includes("purpose")) {
+      icon = Target;
+    } else if (lowerTitle.includes("vision")) {
+      icon = Eye;
+    } else if (lowerTitle.includes("persona") || lowerTitle.includes("audience")) {
+      icon = User;
+    } else if (lowerTitle.includes("voice") || lowerTitle.includes("tone") || lowerTitle.includes("message")) {
+      icon = MessageSquare;
+    } else if (lowerTitle.includes("value")) {
+      icon = Shield;
+    } else if (lowerTitle.includes("promise") || lowerTitle.includes("hook")) {
+      icon = Clock;
+    }
+
+    const nextId = ((i + 1) % nodes.length) + 1;
+
+    return {
+      id: i + 1,
+      originalId: node.id,
+      title: node.title,
+      date: `Pillar ${i + 1}`,
+      content: node.value,
+      category: node.title,
+      icon: icon,
+      relatedIds: [nextId],
+      status: status,
+      energy: 100 - i * 15,
+    };
+  });
 
   useEffect(() => {
     if (search.session) {
@@ -64,19 +98,20 @@ function CanvasPage() {
     <StudioShell
       stepId="canvas"
       eyebrow="Step 2 · Brand Architect"
-      title="Your strategy, in 3D"
-      intro="Rotate the graph. Click any node to inspect or refine — chat with the Brand Copilot to propose edits."
+      title="Your strategy timeline"
+      intro="Interact with the orbital timeline. Click any node to inspect or refine — chat with the Brand Copilot to propose edits."
     >
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        {/* 3D canvas */}
-        <div className="relative h-[600px] overflow-hidden rounded-3xl shadow-[var(--shadow-prism)]">
-          <Suspense fallback={
-            <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_30%_30%,rgba(159,122,234,0.25),rgba(15,8,30,0.95)_70%)]">
-              <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            </div>
-          }>
-            <BrandGraph3D nodes={nodes} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setEditing(false); }} />
-          </Suspense>
+        {/* Radial Timeline */}
+        <div className="relative h-[600px] overflow-hidden rounded-3xl bg-white/40 dark:bg-slate-900/10 border border-slate-200/50 shadow-[var(--shadow-prism)]">
+          <RadialOrbitalTimeline
+            timelineData={timelineData}
+            selectedNodeId={selectedId}
+            onNodeSelect={(id) => {
+              setSelectedId(id);
+              setEditing(false);
+            }}
+          />
 
           {/* Selected node panel */}
           {active && (
@@ -122,8 +157,8 @@ function CanvasPage() {
             <RotateCcw size={12} /> Reset
           </button>
 
-          <div className="pointer-events-none absolute bottom-4 left-4 text-[10px] uppercase tracking-[0.18em] text-white/70">
-            Drag to orbit · scroll to zoom
+          <div className="pointer-events-none absolute bottom-4 left-4 text-[10px] uppercase tracking-[0.18em] text-slate-400">
+            Click any node to focus · Spin controls active
           </div>
         </div>
 

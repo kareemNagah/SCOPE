@@ -1,9 +1,11 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { StudioShell } from "@/components/scope/StudioShell";
+import { MeshBackground } from "@/components/scope/MeshBackground";
+import { TopNav } from "@/components/scope/TopNav";
 import { Upload, Check, ChevronRight, Sparkles, AlertTriangle, RotateCcw } from "lucide-react";
 import { api, type MarketingResult } from "@/lib/api";
 import { toast } from "sonner";
+import { AuroraButton } from "@/components/ui/aurora-button";
 
 export const Route = createFileRoute("/marketing")({
   head: () => ({
@@ -16,12 +18,11 @@ export const Route = createFileRoute("/marketing")({
 });
 
 const steps = [
-  { id: 1, name: "Asset Upload",           sub: "Drop product / brand" },
-  { id: 2, name: "Context Sidebar",        sub: "Prompt Whisperer" },
-  { id: 3, name: "Visual & Market Analysis", sub: "Centrifuge AI lab" },
-  { id: 4, name: "Market Blueprint",       sub: "Identity & behavior" },
-  { id: 5, name: "Persona Cards",          sub: "Primary & secondary" },
-  { id: 6, name: "Negative Hooks Game",    sub: "Stealth education" },
+  { id: 1, name: "Asset & Context",        sub: "Prompt Whisperer" },
+  { id: 2, name: "Visual & Market Analysis", sub: "Centrifuge AI lab" },
+  { id: 3, name: "Market Blueprint",       sub: "Identity & behavior" },
+  { id: 4, name: "Persona Cards",          sub: "Primary & secondary" },
+  { id: 5, name: "Negative Hooks Game",    sub: "Stealth education" },
 ];
 
 function MarketingPage() {
@@ -35,134 +36,184 @@ function MarketingPage() {
       api.getMarketing(search.session).then((res) => {
         if (res) {
           setData(res);
-          setStep(4); // Skip to blueprint if we already have data
+          setStep(3); // Skip to blueprint if we already have data
         }
       });
     }
   }, [search.session]);
 
   const handleRunAnalysis = async (fields: any) => {
-    setStep(3);
+    setStep(2);
     try {
       const res = await api.analyzeMarketing({ session_id: sessionId, ...fields });
       setData(res);
-      setStep(4);
+      setStep(3);
     } catch (err) {
       console.error(err);
       toast.error("Analysis failed. Check the backend logs.");
-      setStep(2);
+      setStep(1);
     }
   };
 
   return (
-    <StudioShell
-      stepId="marketing"
-      eyebrow="Step 4 · Marketing Engine"
-      title="Spectral analysis"
-      intro="Refract a product into a market blueprint, audience personas, and ad concepts you can stress-test."
-    >
-      <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-        <aside className="glass sticky top-44 h-fit rounded-2xl p-3">
-          <ol className="space-y-1">
-            {steps.map((s) => {
-              const active = s.id === step;
-              const done = s.id < step || (s.id >= 4 && data !== null);
-              return (
-                <li key={s.id}>
-                  <button
-                    onClick={() => {
-                      if (done || s.id === 1 || s.id === 2) setStep(s.id);
-                    }}
-                    className={`flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition ${
-                      active ? "bg-foreground text-background" : done ? "text-foreground hover:bg-white/60" : "text-muted-foreground hover:bg-white/60"
-                    }`}
-                  >
-                    <span className={`mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-[10px] font-medium ${
-                      active ? "bg-background text-foreground" : done ? "bg-foreground text-background" : "border border-border bg-white/70 text-muted-foreground"
-                    }`}>
-                      {done && !active ? <Check size={11} /> : s.id}
-                    </span>
-                    <span>
-                      <span className="block text-[13px] font-medium">{s.name}</span>
-                      <span className={`block text-[10px] uppercase tracking-[0.16em] ${active ? "text-background/70" : "text-muted-foreground"}`}>{s.sub}</span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </aside>
+    <div className="relative min-h-screen pb-32">
+      <MeshBackground />
+      <TopNav />
+      
+      <main className="px-6 pt-44">
+        <header className="mx-auto max-w-[1200px] text-center">
+          <p className="font-sans text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+            Module 2 · Marketing Engine
+          </p>
+          <h1 className="mt-2 font-display text-[clamp(2rem,4.5vw,3.75rem)] leading-[1.05] tracking-tight text-foreground">
+            Spectral Analysis
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-[15px] text-muted-foreground">
+            Refract a product brief and visual asset into a structured market blueprint, target consumer personas, and stress-tested ad concepts.
+          </p>
+        </header>
 
-        <div className="min-h-[480px]">
-          {step === 1 && <StepUpload onNext={() => setStep(2)} />}
-          {step === 2 && <StepContext onNext={handleRunAnalysis} />}
-          {step === 3 && <StepAnalysis />}
-          {step === 4 && data && <StepBlueprint data={data} onNext={() => setStep(5)} />}
-          {step === 5 && data && <StepPersonas data={data} onNext={() => setStep(6)} />}
-          {step === 6 && data && <StepHooks data={data} />}
+        <div className="mx-auto mt-10 max-w-[1200px] grid gap-6 lg:grid-cols-[260px_1fr]">
+          {/* Sidebar Navigation */}
+          <aside className="glass sticky top-44 h-fit rounded-2xl p-3">
+            <ol className="space-y-1">
+              {steps.map((s) => {
+                const active = s.id === step;
+                const done = s.id < step || (s.id >= 3 && data !== null);
+                return (
+                  <li key={s.id}>
+                    <button
+                      onClick={() => {
+                        if (done || s.id === 1) setStep(s.id);
+                      }}
+                      className={`flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition cursor-pointer ${
+                        active ? "bg-foreground text-background" : done ? "text-foreground hover:bg-white/60" : "text-muted-foreground hover:bg-white/60"
+                      }`}
+                    >
+                      <span className={`mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-[10px] font-medium ${
+                        active ? "bg-background text-foreground" : done ? "bg-foreground text-background" : "border border-border bg-white/70 text-muted-foreground"
+                      }`}>
+                        {done && !active ? <Check size={11} /> : s.id}
+                      </span>
+                      <span>
+                        <span className="block text-[13px] font-medium">{s.name}</span>
+                        <span className={`block text-[10px] uppercase tracking-[0.16em] ${active ? "text-background/70" : "text-muted-foreground"}`}>{s.sub}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </aside>
+
+          {/* Active Step Panel */}
+          <div className="min-h-[480px]">
+            {step === 1 && <StepUploadAndContext onNext={handleRunAnalysis} />}
+            {step === 2 && <StepAnalysis />}
+            {step === 3 && data && <StepBlueprint data={data} onNext={() => setStep(4)} />}
+            {step === 4 && data && <StepPersonas data={data} onNext={() => setStep(5)} />}
+            {step === 5 && data && <StepHooks data={data} />}
+          </div>
         </div>
-      </div>
-    </StudioShell>
+      </main>
+    </div>
   );
 }
 
 function NextBtn({ onClick, label = "Continue" }: { onClick: () => void; label?: string }) {
   return (
-    <button onClick={onClick} className="bg-gradient-cta inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium text-white shadow-[0_8px_24px_-6px_rgba(255,90,120,0.55)] hover:brightness-105 transition">
+    <AuroraButton onClick={onClick} className="h-10 px-5 rounded-full text-xs font-semibold uppercase tracking-wider">
       {label} <ChevronRight size={15} />
-    </button>
+    </AuroraButton>
   );
 }
 
-function StepUpload({ onNext }: { onNext: () => void }) {
+function StepUploadAndContext({ onNext }: { onNext: (fields: any) => void }) {
   const [name, setName] = useState<string | null>(null);
-  return (
-    <div className="glass rounded-3xl p-6">
-      <h2 className="font-display text-2xl text-foreground">Drop your product or brand asset</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Hero shot, packaging, or brand mark. PNG / JPG, up to 20MB.</p>
-      <label className="mt-5 flex h-[260px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-white/40 text-center hover:border-foreground/40 transition">
-        <input type="file" accept="image/*" className="hidden" onChange={(e) => setName(e.target.files?.[0]?.name ?? null)} />
-        <Upload size={28} className="text-muted-foreground" />
-        <p className="mt-3 text-sm text-foreground">{name ?? "Click to upload or drag & drop"}</p>
-        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">PNG · JPG · WEBP</p>
-      </label>
-      <div className="mt-5 flex justify-end"><NextBtn onClick={onNext} label="Add context" /></div>
-    </div>
-  );
-}
-
-function StepContext({ onNext }: { onNext: (fields: any) => void }) {
   const [fields, setFields] = useState({
     materials: "", pricing_tier: "", region: "", channels: "", category: "", stage: ""
   });
-  
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   const fieldConfigs = [
-    { key: "materials", label: "Materials", placeholder: "Recycled poly, merino blend…" },
-    { key: "pricing_tier", label: "Pricing tier", placeholder: "Mass · Premium · Luxury" },
-    { key: "region", label: "Primary region", placeholder: "EU · MENA · NA…" },
-    { key: "channels", label: "Channels", placeholder: "DTC · Wholesale · Retail" },
-    { key: "category", label: "Category", placeholder: "Performance wear" },
-    { key: "stage", label: "Stage", placeholder: "Zero-to-One · Relaunch · Scale" },
+    { key: "materials", label: "Materials / Ingredients", placeholder: "Organic cotton, botanical oils…" },
+    { key: "pricing_tier", label: "Pricing Tier", placeholder: "Mass · Premium · Luxury" },
+    { key: "region", label: "Primary Region", placeholder: "Global · NA · EU · MENA…" },
+    { key: "channels", label: "Sales Channels", placeholder: "DTC · Retail · Marketplace" },
+    { key: "category", label: "Product Category", placeholder: "Skincare, activewear…" },
+    { key: "stage", label: "Brand Stage", placeholder: "Zero-to-One · Relaunch · Scale" },
   ] as const;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      setName(file.name);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
 
   return (
     <div className="glass rounded-3xl p-6">
-      <h2 className="font-display text-2xl text-foreground">Prompt Whisperer</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Add the context that turns a flat brief into a sharp blueprint.</p>
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        {fieldConfigs.map((f) => (
-          <div key={f.key}>
-            <label className="text-[11px] font-medium uppercase tracking-[0.16em] text-foreground/80">{f.label}</label>
-            <input 
-              placeholder={f.placeholder} 
-              value={fields[f.key]}
-              onChange={(e) => setFields({...fields, [f.key]: e.target.value})}
-              className="mt-1 w-full rounded-lg border border-border bg-white/80 px-3 py-2 text-sm outline-none focus:border-foreground/40" 
-            />
+      <div className="grid gap-6 md:grid-cols-[1fr_320px]">
+        {/* Left column: upload */}
+        <div className="flex flex-col justify-between">
+          <div>
+            <h2 className="font-display text-2xl text-foreground">1. Upload Product/Brand Asset</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Drop a hero shot, product packaging, or logo. Supports PNG, JPG, or WEBP.</p>
+            
+            {previewUrl ? (
+              <div className="relative mt-5 flex h-[280px] items-center justify-center rounded-2xl border border-border bg-black/5 overflow-hidden">
+                <img src={previewUrl} alt="Preview" className="h-full w-full object-contain" />
+                <button 
+                  onClick={() => { setPreviewUrl(null); setName(null); }} 
+                  className="absolute top-2 right-2 bg-white/80 hover:bg-white p-1.5 rounded-full text-rose-500 shadow transition cursor-pointer"
+                >
+                  <RotateCcw size={14} />
+                </button>
+              </div>
+            ) : (
+              <label className="mt-5 flex h-[280px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-white/40 text-center hover:border-foreground/45 transition">
+                <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                <Upload size={28} className="text-muted-foreground" />
+                <p className="mt-3 text-sm text-foreground">{name ?? "Click to upload or drag & drop"}</p>
+                <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">PNG · JPG · WEBP</p>
+              </label>
+            )}
           </div>
-        ))}
+        </div>
+
+        {/* Right column: prompt whisperer sidebar */}
+        <div className="border-l border-white/20 pl-6 flex flex-col justify-between">
+          <div>
+            <h2 className="font-display text-2xl text-foreground">Context Sidebar</h2>
+            <p className="mt-1 text-xs text-muted-foreground leading-normal">The Prompt Whisperer guides you to refine the AI's market calibration.</p>
+            
+            <div className="mt-4 space-y-3">
+              {fieldConfigs.map((f) => (
+                <div key={f.key}>
+                  <label className="text-[9px] font-bold uppercase tracking-[0.16em] text-foreground/80">{f.label}</label>
+                  <input 
+                    placeholder={f.placeholder} 
+                    value={fields[f.key]}
+                    onChange={(e) => setFields({...fields, [f.key]: e.target.value})}
+                    className="mt-1 w-full rounded-lg border border-border bg-white/80 px-2.5 py-1.5 text-xs outline-none focus:border-foreground/45" 
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="mt-5 flex justify-end"><NextBtn onClick={() => onNext(fields)} label="Run analysis" /></div>
+      
+      <div className="mt-6 border-t border-white/10 pt-4 flex justify-end">
+        <AuroraButton 
+          onClick={() => onNext(fields)} 
+          className="h-10 px-6 rounded-full text-xs font-semibold uppercase tracking-wider"
+        >
+          Run Centrifuge Analysis <ChevronRight size={15} />
+        </AuroraButton>
+      </div>
     </div>
   );
 }
@@ -297,11 +348,11 @@ function StepHooks({ data }: { data: MarketingResult }) {
       <div className="glass rounded-3xl p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-display text-2xl text-foreground">Negative Hooks — which one alienates {primaryName}?</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Pick the concept you think would push the primary persona away.</p>
+            <h2 className="font-display text-2xl text-foreground">Stealth Ed: Negative Hooks Selection</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Choose the hook concept you believe would alienate {primaryName} based on their Persona Card.</p>
           </div>
           {pick && (
-            <button onClick={() => setPick(null)} className="glass inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-foreground hover:bg-white">
+            <button onClick={() => setPick(null)} className="glass inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-foreground hover:bg-white cursor-pointer">
               <RotateCcw size={12} /> Reset
             </button>
           )}
@@ -316,7 +367,7 @@ function StepHooks({ data }: { data: MarketingResult }) {
             <button
               key={c.id}
               onClick={() => setPick(c.id)}
-              className={`glass rounded-2xl p-5 text-left transition ${
+              className={`glass rounded-2xl p-5 text-left transition cursor-pointer ${
                 wrong ? "ring-2 ring-rose-400 animate-pulse" : right ? "ring-2 ring-emerald-400" : "hover:scale-[1.01]"
               }`}
             >

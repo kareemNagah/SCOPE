@@ -3,6 +3,7 @@ import { Plus, Sparkles, Loader2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { AuroraButton } from "@/components/ui/aurora-button";
 
 export function PromptBar() {
   const [guided, setGuided] = useState(false);
@@ -31,7 +32,10 @@ export function PromptBar() {
   };
 
   return (
-    <div className="glass mx-auto flex w-full max-w-[920px] items-center gap-2 rounded-full p-2 pl-5">
+    <div
+      className="glass mx-auto flex w-full max-w-[920px] items-center gap-2 rounded-full p-2 pl-5"
+      style={{ backdropFilter: 'url("#container-glass")' }}
+    >
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -86,15 +90,14 @@ export function PromptBar() {
         </span>
       </button>
 
-      <button
-        type="button"
+      <AuroraButton
         onClick={handleGenerate}
         disabled={isLoading || !value.trim()}
-        className="bg-gradient-cta inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium text-white shadow-[0_8px_24px_-6px_rgba(255,90,120,0.55)] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-50"
+        className="h-10 px-5 rounded-full text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
       >
         {isLoading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         Generate
-      </button>
+      </AuroraButton>
     </div>
   );
 }
