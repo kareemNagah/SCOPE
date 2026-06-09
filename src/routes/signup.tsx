@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { MeshBackground } from "@/components/scope/MeshBackground";
 import { ScopeLogo } from "@/components/scope/ScopeLogo";
+import LiquidMetalHero from "@/components/ui/liquid-metal-hero";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -23,18 +24,22 @@ function SignUpPage() {
     <div className="relative min-h-screen overflow-hidden">
       <MeshBackground />
       <div className="relative grid min-h-screen lg:grid-cols-2">
-        <div className="hidden flex-col justify-between p-10 lg:flex">
-          <Link to="/"><ScopeLogo /></Link>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Join the studio</p>
-            <h1 className="mt-2 font-display text-5xl text-foreground leading-[1.05]">
-              One brief in.<br /><span className="text-gradient-brand">A full spectrum out.</span>
-            </h1>
-            <p className="mt-3 max-w-md text-[15px] text-muted-foreground">
-              Strategy, identity, personas, ad copy, vector logos — generated, editable, exportable.
-            </p>
+        <div className="hidden lg:block relative overflow-hidden h-full">
+          <div className="absolute top-8 left-8 z-20">
+            <Link to="/"><ScopeLogo /></Link>
           </div>
-          <p className="text-[11px] text-muted-foreground">© 2026 SCOPE Studio</p>
+          <LiquidMetalHero
+            badge="✨ Join the Studio"
+            title="One brief in. A full spectrum out."
+            subtitle="Strategy, identity, personas, ad copy, vector logos — generated, editable, exportable."
+            primaryCtaLabel="Explore Studio"
+            onPrimaryCtaClick={() => window.location.href = "/"}
+            features={[
+              "Liquid metal aesthetics",
+              "Interactive radial strategy",
+              "Connected AI marketing engine"
+            ]}
+          />
         </div>
 
         <div className="flex items-center justify-center p-6 lg:p-10">

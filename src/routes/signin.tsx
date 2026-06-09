@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { MeshBackground } from "@/components/scope/MeshBackground";
 import { ScopeLogo } from "@/components/scope/ScopeLogo";
+import LiquidMetalHero from "@/components/ui/liquid-metal-hero";
 
 export const Route = createFileRoute("/signin")({
   head: () => ({
@@ -22,18 +23,22 @@ function SignInPage() {
       <MeshBackground />
       <div className="relative grid min-h-screen lg:grid-cols-2">
         {/* Brand panel */}
-        <div className="hidden flex-col justify-between p-10 lg:flex">
-          <Link to="/"><ScopeLogo /></Link>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Refraction Engine</p>
-            <h1 className="mt-2 font-display text-5xl text-foreground leading-[1.05]">
-              Refract your <span className="text-gradient-brand">brand</span>.
-            </h1>
-            <p className="mt-3 max-w-md text-[15px] text-muted-foreground">
-              From a single brief to strategy, identity, marketing and assets — all in one prism.
-            </p>
+        <div className="hidden lg:block relative overflow-hidden h-full">
+          <div className="absolute top-8 left-8 z-20">
+            <Link to="/"><ScopeLogo /></Link>
           </div>
-          <p className="text-[11px] text-muted-foreground">© 2026 SCOPE Studio</p>
+          <LiquidMetalHero
+            badge="✨ SCOPE Refraction Engine"
+            title="Refract your brand."
+            subtitle="From a single brief to strategy, identity, marketing and assets — all in one prism."
+            primaryCtaLabel="Explore Studio"
+            onPrimaryCtaClick={() => window.location.href = "/"}
+            features={[
+              "Liquid metal aesthetics",
+              "Interactive radial strategy",
+              "Connected AI marketing engine"
+            ]}
+          />
         </div>
 
         {/* Form */}

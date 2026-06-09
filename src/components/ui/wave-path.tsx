@@ -1,83 +1,148 @@
-'use client';
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { useRef, useEffect } from 'react';
+"use client";
 
-type WWavePathProps = React.ComponentProps<'div'>;
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-export function WavePath({ className, ...props }: WWavePathProps) {
-	const path = useRef<SVGPathElement>(null);
-	let progress = 0;
-	let x = 0.2;
-	let time = Math.PI / 2;
-	let reqId: number | null = null;
+type WavePathProps = React.ComponentProps<"div"> & {
+  /**
+   * Wave amplitude in pixels at the control point. Defaults to 60.
+   */
+  amplitude?: number;
+  /**
+   * Base Y offset of the wave. Defaults to 50.
+   */
+  baseY?: number;
+  /**
+   * Stroke color override. Defaults to currentColor.
+   */
+  strokeColor?: string;
+  /**
+   * Disable the pointer interaction (purely decorative).
+   */
+  static?: boolean;
+  /**
+   * Auto-animate the wave on mount even without pointer input.
+   */
+  auto?: boolean;
+};
 
-	useEffect(() => {
-		setPath(progress);
-	}, []);
+export function WavePath({
+  className,
+  amplitude = 60,
+  baseY = 50,
+  strokeColor,
+  static: isStatic = false,
+  auto = false,
+  ...props
+}: WavePathProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const pathRef = React.useRef<SVGPathElement>(null);
+  const rafRef = React.useRef<number | null>(null);
+  const stateRef = React.useRef({
+    progress: 0,
+    x: 0.5,
+    time: Math.PI / 2,
+    targetX: 0.5,
+    targetProgress: 0,
+  });
+  const [width, setWidth] = React.useState(0);
+  const [height] = React.useState(baseY * 2 + amplitude * 1.4);
+  const reducedMotion = React.useRef(false);
 
-	const setPath = (progress: number) => {
-		const width = window.innerWidth * 0.7;
-		if (path.current) {
-			path.current.setAttributeNS(
-				null,
-				'd',
-				`M0 100 Q${width * x} ${100 + progress * 0.6}, ${width} 100`,
-			);
-		}
-	};
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    reducedMotion.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
 
-	const lerp = (x: number, y: number, a: number) => x * (1 - a) + y * a;
+  React.useEffect(() => {
+    const el = pathRef.current?.parentElement?.parentElement;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    setWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
 
-	const manageMouseEnter = () => {
-		if (reqId) {
-			cancelAnimationFrame(reqId);
-			resetAnimation();
-		}
-	};
+  const setPath = React.useCallback(
+    (progress: number, xPos: number) => {
+      const node = pathRef.current;
+      if (!node || width === 0) return;
+      const peak = 100 + progress * 0.4;
+      const cpX = width * xPos;
+      const cpY = peak;
+      const d = `M0 100 Q${cpX} ${cpY}, ${width} 100`;
+      node.setAttribute("d", d);
+    },
+    [width],
+  );
 
-	const manageMouseMove = (e: React.MouseEvent) => {
-		const { movementY, clientX } = e;
-		if (path.current) {
-			const pathBound = path.current.getBoundingClientRect();
-			x = (clientX - pathBound.left) / pathBound.width;
-			progress += movementY;
-			setPath(progress);
-		}
-	};
+  React.useEffect(() => {
+    if (isStatic) {
+      setPath(amplitude, 0.5);
+      return;
+    }
+    setPath(0, 0.5);
+  }, [isStatic, amplitude, setPath]);
 
-	const manageMouseLeave = () => {
-		animateOut();
-	};
+  React.useEffect(() => {
+    if (isStatic || reducedMotion.current) return;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      const s = stateRef.current;
+      s.x += (s.targetX - s.x) * 0.12;
+      s.progress += (s.targetProgress - s.progress) * 0.12;
+      if (auto) {
+        s.targetX = 0.5 + Math.sin(now * 0.0006) * 0.35;
+        s.targetProgress = Math.sin(now * 0.001) * amplitude * 0.4;
+      } else {
+        s.targetProgress *= 0.985;
+        if (Math.abs(s.targetProgress) < 0.4) s.targetProgress = 0;
+      }
+      setPath(s.progress, s.x);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [auto, isStatic, amplitude, setPath]);
 
-	const animateOut = () => {
-		const newProgress = progress * Math.sin(time);
-		progress = lerp(progress, 0, 0.025);
-		time += 0.2;
-		setPath(newProgress);
-		if (Math.abs(progress) > 0.75) {
-			reqId = requestAnimationFrame(animateOut);
-		} else {
-			resetAnimation();
-		}
-	};
+  const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isStatic || reducedMotion.current) return;
+    const node = containerRef.current;
+    if (!node) return;
+    const bounds = node.getBoundingClientRect();
+    if (bounds.width === 0) return;
+    const s = stateRef.current;
+    s.targetX = Math.min(1, Math.max(0, (e.clientX - bounds.left) / bounds.width));
+    s.targetProgress = Math.min(amplitude, Math.max(-amplitude, -e.movementY * 1.4));
+  };
 
-	const resetAnimation = () => {
-		time = Math.PI / 2;
-		progress = 0;
-	};
-
-	return (
-		<div className={cn('relative h-px w-[70vw]', className)} {...props}>
-			<div
-				onMouseEnter={manageMouseEnter}
-				onMouseMove={manageMouseMove}
-				onMouseLeave={manageMouseLeave}
-				className="relative -top-5 z-10 h-10 w-full hover:-top-[150px] hover:h-[300px]"
-			/>
-			<svg className="absolute -top-[100px] h-[300px] w-full">
-				<path ref={path} className="fill-none stroke-current" strokeWidth={2} />
-			</svg>
-		</div>
-	);
+  return (
+    <div
+      ref={containerRef}
+      className={cn("relative w-full select-none", className)}
+      style={{ height }}
+      onPointerMove={handleMove}
+      {...props}
+    >
+      <svg
+        className="absolute inset-x-0 top-0 h-full w-full overflow-visible"
+        viewBox={`0 0 ${Math.max(1, width)} 200`}
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <path
+          ref={pathRef}
+          className="fill-none"
+          stroke={strokeColor ?? "currentColor"}
+          strokeWidth={1.25}
+          strokeLinecap="round"
+          strokeOpacity={0.6}
+        />
+      </svg>
+    </div>
+  );
 }
