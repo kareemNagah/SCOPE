@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/kngh/**)",
+      "Bash(ssh -T git@github.com)"
+    ]
+  }
+}
