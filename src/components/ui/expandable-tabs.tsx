@@ -9,6 +9,7 @@ import { LucideIcon } from "lucide-react";
 interface Tab {
   title: string;
   icon: LucideIcon;
+  disabled?: boolean;
   type?: never;
 }
 
@@ -100,6 +101,7 @@ export function ExpandableTabs({
 
         const Icon = tab.icon;
         const isSelected = selected === index;
+        const isDisabled = Boolean(tab.disabled);
 
         return (
           <motion.button
@@ -108,14 +110,20 @@ export function ExpandableTabs({
             initial={false}
             animate="animate"
             custom={isSelected}
-            onClick={() => handleSelect(index)}
+            onClick={() => {
+              if (!isDisabled) handleSelect(index);
+            }}
             transition={transition}
+            disabled={isDisabled}
             className={cn(
               "relative flex items-center rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-300 cursor-pointer",
               isSelected
                 ? cn("bg-white/65 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-white/40", activeColor)
-                : "text-muted-foreground hover:bg-white/20 hover:text-foreground"
+                : isDisabled
+                  ? "cursor-not-allowed text-muted-foreground/45"
+                  : "text-muted-foreground hover:bg-white/20 hover:text-foreground"
             )}
+            title={isDisabled ? "Complete the required brief step first" : tab.title}
           >
             <Icon size={18} strokeWidth={2} />
             <AnimatePresence initial={false}>

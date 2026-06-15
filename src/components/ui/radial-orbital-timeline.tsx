@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { ArrowRight, Link, Zap } from "lucide-react";
+import { ArrowRight, Link } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +40,8 @@ export default function RadialOrbitalTimeline({
   const containerRef = useRef<HTMLDivElement>(null);
   const orbitRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const rafRef = useRef<number | null>(null);
+  const prefersReducedMotion = useRef(false);
 
   // Synchronize internal node selection with the parent route selection state
   useEffect(() => {
@@ -93,21 +95,26 @@ export default function RadialOrbitalTimeline({
   };
 
   useEffect(() => {
-    let rotationTimer: NodeJS.Timeout;
+    prefersReducedMotion.current =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    if (autoRotate && viewMode === "orbital") {
-      rotationTimer = setInterval(() => {
-        setRotationAngle((prev) => {
-          const newAngle = (prev + 0.3) % 360;
-          return Number(newAngle.toFixed(3));
-        });
-      }, 50);
+    if (!autoRotate || viewMode !== "orbital" || prefersReducedMotion.current) {
+      return;
     }
 
+    let lastTs = 0;
+    const tick = (ts: number) => {
+      if (!lastTs) lastTs = ts;
+      const delta = ts - lastTs;
+      lastTs = ts;
+      setRotationAngle((prev) => Number(((prev + delta * 0.0065) % 360).toFixed(3)));
+      rafRef.current = window.requestAnimationFrame(tick);
+    };
+
+    rafRef.current = window.requestAnimationFrame(tick);
     return () => {
-      if (rotationTimer) {
-        clearInterval(rotationTimer);
-      }
+      if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
     };
   }, [autoRotate, viewMode]);
 
@@ -188,7 +195,7 @@ export default function RadialOrbitalTimeline({
               <div
                 key={item.id}
                 ref={(el) => { nodeRefs.current[item.id] = el; }}
-                className="absolute transition-all duration-700 cursor-pointer flex flex-col items-center justify-center"
+                className="absolute flex cursor-pointer flex-col items-center justify-center transition-all duration-500"
                 style={nodeStyle}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -197,15 +204,13 @@ export default function RadialOrbitalTimeline({
               >
                 {/* Glow ring under node */}
                 <div
-                  className={`absolute rounded-full -inset-1 ${
-                    isPulsing ? "animate-pulse duration-1000" : ""
-                  }`}
+                  className={`absolute -inset-1 rounded-full ${isPulsing ? "animate-pulse duration-1000" : ""}`}
                   style={{
-                    background: `radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(168, 85, 247, 0) 70%)`,
-                    width: `${item.energy * 0.5 + 40}px`,
-                    height: `${item.energy * 0.5 + 40}px`,
-                    left: `-${(item.energy * 0.5 + 40 - 40) / 2}px`,
-                    top: `-${(item.energy * 0.5 + 40 - 40) / 2}px`,
+                    background: "radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(168, 85, 247, 0) 70%)",
+                    width: "74px",
+                    height: "74px",
+                    left: "-17px",
+                    top: "-17px",
                   }}
                 ></div>
 
@@ -274,24 +279,6 @@ export default function RadialOrbitalTimeline({
                     <CardContent className="text-[12px] text-white/70 leading-normal p-4 pt-0">
                       <p>{item.content}</p>
 
-                      {/* Progress Energy bar */}
-                      <div className="mt-4 pt-3 border-t border-white/10">
-                        <div className="flex justify-between items-center text-[10px] uppercase font-semibold text-white/50 mb-1">
-                          <span className="flex items-center">
-                            <Zap size={10} className="mr-1 text-amber-500 fill-amber-500" />
-                            Strength
-                          </span>
-                          <span className="font-mono">{item.energy}%</span>
-                        </div>
-                        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-scope-pink to-scope-blue"
-                            style={{ width: `${item.energy}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      {/* Connected Nodes */}
                       {item.relatedIds.length > 0 && (
                         <div className="mt-4 pt-3 border-t border-white/10">
                           <div className="flex items-center mb-2">

@@ -14,20 +14,21 @@ import {
   Clock,
   Calendar,
 } from "lucide-react";
+import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router";
+
 import RadialOrbitalTimeline, { type TimelineItem } from "@/components/ui/radial-orbital-timeline";
 import { api } from "@/lib/api";
 import { StudioShell } from "@/components/scope/StudioShell";
 import { CopilotChat } from "@/components/scope/CopilotChat";
-import { initialNodes3D, backendNodesToGraph, type Node3D } from "@/components/scope/BrandGraph3D";
+import { backendNodesToGraph, type Node3D } from "@/components/scope/BrandGraph3D";
 import { CanvasProvider, useCanvas } from "@/components/scope/CanvasContext";
+import { BrandIdentityGate, type GatePayload } from "@/components/scope/BrandIdentityGate";
 import { WaveBorder } from "@/components/ui/wave-border";
-
-import { createFileRoute, useSearch } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/canvas")({
   head: () => ({
     meta: [
-      { title: "SCOPE — Strategy Canvas" },
+      { title: "SCOPE - Strategy Canvas" },
       {
         name: "description",
         content: "Edit your brand pillars in an interactive orbital timeline with your AI copilot.",
@@ -39,11 +40,29 @@ export const Route = createFileRoute("/canvas")({
 
 function CanvasPage() {
   const search = useSearch({ strict: false }) as { session?: string };
+  const navigate = useNavigate();
   const [sessionId] = React.useState(() => search.session || crypto.randomUUID());
-  const [nodes, setNodes] = React.useState<Node3D[]>(initialNodes3D);
+  const [nodes, setNodes] = React.useState<Node3D[]>([]);
+  const [status, setStatus] = React.useState({ ready: false, approved: false, confirmed: false });
+  const [showGate, setShowGate] = React.useState(false);
 
   React.useEffect(() => {
-    if (!search.session) return;
+    if (!search.session) {
+      setStatus({ ready: true, approved: false, confirmed: false });
+      return;
+    }
+    api
+      .getBrief(search.session)
+      .then((brief) => {
+        setStatus({ ready: true, approved: brief.approved, confirmed: brief.strategy_confirmed });
+      })
+      .catch(() => {
+        setStatus({ ready: true, approved: false, confirmed: false });
+      });
+  }, [search.session]);
+
+  React.useEffect(() => {
+    if (!search.session || !status.approved) return;
     api
       .getNodes(search.session)
       .then((backendNodes) => {
@@ -52,23 +71,63 @@ function CanvasPage() {
         }
       })
       .catch((err) => console.error("Failed to load session nodes:", err));
-  }, [search.session]);
+  }, [search.session, status.approved]);
 
   return (
     <CanvasProvider nodes={nodes} setNodes={setNodes}>
       <StudioShell
         stepId="canvas"
-        eyebrow="Step 2 · Brand Architect"
+        eyebrow="Step 2 - Brand Architect"
         title="Your strategy timeline"
         intro="Click a node to focus it. Edit inline, or ask the copilot to push back on the framing."
       >
-        <CanvasBody sessionId={sessionId} />
+        {status.ready && status.approved ? (
+          <CanvasBody
+            sessionId={sessionId}
+            strategyConfirmed={status.confirmed}
+            onConfirmStrategy={async () => {
+              await api.confirmStrategy(sessionId);
+              setStatus((s) => ({ ...s, confirmed: true }));
+              setShowGate(true);
+            }}
+          />
+        ) : (
+          <LockedStrategyState />
+        )}
       </StudioShell>
+
+      <AnimatePresence>
+        {showGate && (
+          <BrandIdentityGate
+            sessionId={sessionId}
+            onConfirm={async (payload: GatePayload) => {
+              await api.generateLogo({
+                session_id: sessionId,
+                wordmark: payload.brandName,
+                concept: payload.concept,
+                palette_name: payload.palette.name,
+                font_name: payload.fontName,
+                brand_context: `Palette mood: ${payload.palette.mood}. Colors: ${payload.palette.colors.join(", ")}.`,
+              });
+              navigate({ to: "/logo", search: { session: sessionId } });
+            }}
+            onBack={() => setShowGate(false)}
+          />
+        )}
+      </AnimatePresence>
     </CanvasProvider>
   );
 }
 
-function CanvasBody({ sessionId }: { sessionId: string }) {
+function CanvasBody({
+  sessionId,
+  strategyConfirmed,
+  onConfirmStrategy,
+}: {
+  sessionId: string;
+  strategyConfirmed: boolean;
+  onConfirmStrategy: () => Promise<void>;
+}) {
   const {
     nodes,
     activeNodeId,
@@ -79,6 +138,7 @@ function CanvasBody({ sessionId }: { sessionId: string }) {
     applyDraftToNode,
   } = useCanvas();
   const [draft, setDraft] = React.useState("");
+  const [confirmingStrategy, setConfirmingStrategy] = React.useState(false);
 
   const timelineData: TimelineItem[] = React.useMemo(() => {
     return nodes.map((node, i) => {
@@ -89,12 +149,7 @@ function CanvasBody({ sessionId }: { sessionId: string }) {
       if (lowerTitle.includes("mission") || lowerTitle.includes("purpose")) icon = Target;
       else if (lowerTitle.includes("vision")) icon = Eye;
       else if (lowerTitle.includes("persona") || lowerTitle.includes("audience")) icon = User;
-      else if (
-        lowerTitle.includes("voice") ||
-        lowerTitle.includes("tone") ||
-        lowerTitle.includes("message")
-      )
-        icon = MessageSquare;
+      else if (lowerTitle.includes("voice") || lowerTitle.includes("tone") || lowerTitle.includes("message")) icon = MessageSquare;
       else if (lowerTitle.includes("value")) icon = Shield;
       else if (lowerTitle.includes("promise") || lowerTitle.includes("hook")) icon = Clock;
 
@@ -134,35 +189,64 @@ function CanvasBody({ sessionId }: { sessionId: string }) {
 
   return (
     <>
-      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
+        <div className="h-[600px]">
+          <CopilotChat sessionId={sessionId} />
+        </div>
+
         <div className="relative h-[600px] overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-950/95 shadow-[0_20px_60px_-20px_color-mix(in_oklab,var(--scope-purple)_35%,transparent)]">
-          <RadialOrbitalTimeline
-            timelineData={timelineData}
-            selectedNodeId={activeNodeId}
-            onNodeSelect={(id) => {
-              setActiveNodeId(id);
-              setEditingNodeId(null);
+          {/* Ambient core glow behind the orbit */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle, color-mix(in oklab, var(--scope-violet) 28%, transparent), transparent 65%)",
             }}
           />
+          {timelineData.length > 0 ? (
+            <RadialOrbitalTimeline
+              timelineData={timelineData}
+              selectedNodeId={activeNodeId}
+              onNodeSelect={(id) => {
+                setActiveNodeId(id);
+                setEditingNodeId(null);
+              }}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-center text-slate-400">
+              <div>
+                <p className="text-sm font-medium text-slate-200">No strategy nodes yet</p>
+                <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-500">
+                  Approve the brief to initialize the canvas
+                </p>
+              </div>
+            </div>
+          )}
 
           <button
             type="button"
             onClick={() => {
-              setNodes(initialNodes3D);
+              setNodes([]);
               setActiveNodeId(null);
               setEditingNodeId(null);
             }}
-            className="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-white/70 backdrop-blur-sm transition hover:bg-white/15 hover:text-white"
+            className="absolute bottom-4 right-4 flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs text-white/70 backdrop-blur-sm transition-colors duration-200 hover:bg-white/15 hover:text-white"
           >
             <RotateCcw size={12} /> Reset
           </button>
 
-          <div className="pointer-events-none absolute bottom-4 left-4 text-[10px] uppercase tracking-[0.18em] text-slate-500">
-            Click any node to focus · spin controls active
+          <div className="pointer-events-none absolute bottom-4 left-4 flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-slate-400 backdrop-blur-sm">
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{
+                background: "var(--scope-violet)",
+                animation: "orbital-pulse 1.8s ease-in-out infinite",
+              }}
+            />
+            Click any node to focus
           </div>
         </div>
-
-        <CopilotChat sessionId={sessionId} />
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -198,7 +282,7 @@ function CanvasBody({ sessionId }: { sessionId: string }) {
                 >
                   <div className="relative z-[2] rounded-2xl p-4">
                     <div
-                      className="absolute top-0 left-4 right-4 h-0.5 rounded-b-full"
+                      className="absolute left-4 right-4 top-0 h-0.5 rounded-b-full"
                       style={{ background: node.color }}
                     />
 
@@ -278,9 +362,46 @@ function CanvasBody({ sessionId }: { sessionId: string }) {
         </AnimatePresence>
       </div>
 
-      <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-        <Sparkles size={13} />
-        Edits flag downstream Identity, Marketing &amp; Logo as &ldquo;Needs Update.&rdquo;
+      <div className="mt-6 flex flex-col items-center gap-3">
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Sparkles size={13} />
+          Edits flag downstream Identity, Marketing &amp; Logo as &ldquo;Needs Update.&rdquo;
+        </p>
+        {!strategyConfirmed && nodes.length > 0 && (
+          <motion.button
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            type="button"
+            disabled={confirmingStrategy}
+            onClick={async () => {
+              setConfirmingStrategy(true);
+              try {
+                await onConfirmStrategy();
+              } finally {
+                setConfirmingStrategy(false);
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_24px_-6px_rgba(255,90,120,0.45)] transition hover:brightness-110 disabled:opacity-60"
+            style={{ background: "var(--gradient-cta)" }}
+          >
+            {confirmingStrategy ? (
+              <>
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Confirming…
+              </>
+            ) : (
+              <>
+                Confirm Strategy &amp; Build Identity
+                <Sparkles size={14} />
+              </>
+            )}
+          </motion.button>
+        )}
+        {strategyConfirmed && (
+          <p className="text-[11px] font-medium text-emerald-400">
+            ✓ Strategy confirmed — identity gate ready
+          </p>
+        )}
       </div>
     </>
   );
@@ -293,4 +414,18 @@ function toneForColor(hex: string): "violet" | "pink" | "blue" | "orange" | "mut
   if (h.includes("4299e1") || h.includes("2") || h.includes("4")) return "blue";
   if (h.includes("7c3aed") || h.includes("6b46c1") || h.includes("9f7aea")) return "violet";
   return "mute";
+}
+
+function LockedStrategyState() {
+  return (
+    <div className="rounded-3xl border border-slate-200/70 bg-white/70 p-10 text-center shadow-[0_24px_60px_-24px_rgba(15,23,42,0.25)] backdrop-blur-md">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+        Strategy locked
+      </p>
+      <h2 className="mt-3 font-display text-4xl text-slate-950">Start with the brief</h2>
+      <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-slate-600">
+        The strategy canvas opens only after the brief is generated and approved.
+      </p>
+    </div>
+  );
 }

@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+.codex-run/
 dist-ssr
 .output
 .vinxi
@@ -36,3 +37,6 @@ backend/.venv/
 backend/__pycache__/
 backend/*.pyc
 backend/.env
+
+# scope-dev local state
+.scope-dev/

@@ -11,16 +11,25 @@ export type EditEvent = {
   at: number;
 };
 
+export type SelectedPalette = {
+  name: string;
+  colors: string[];
+  mood: string;
+  usage_note?: string;
+};
+
 export type CanvasState = {
   nodes: Node3D[];
   activeNodeId: string | null;
   editingNodeId: string | null;
   recentEdits: EditEvent[];
+  selectedPalette: SelectedPalette | null;
   setNodes: React.Dispatch<React.SetStateAction<Node3D[]>>;
   setActiveNodeId: (id: string | null) => void;
   setEditingNodeId: (id: string | null) => void;
   recordEdit: (event: Omit<EditEvent, "id" | "at">) => void;
   applyDraftToNode: (nodeId: string, draft: string, source: EditEvent["source"]) => void;
+  setSelectedPalette: (p: SelectedPalette | null) => void;
 };
 
 const CanvasContext = React.createContext<CanvasState | null>(null);
@@ -37,6 +46,7 @@ export function CanvasProvider({
   const [activeNodeId, setActiveNodeId] = React.useState<string | null>(null);
   const [editingNodeId, setEditingNodeId] = React.useState<string | null>(null);
   const [recentEdits, setRecentEdits] = React.useState<EditEvent[]>([]);
+  const [selectedPalette, setSelectedPalette] = React.useState<SelectedPalette | null>(null);
 
   const recordEdit = React.useCallback<CanvasState["recordEdit"]>((event) => {
     const next: EditEvent = {
@@ -70,13 +80,15 @@ export function CanvasProvider({
       activeNodeId,
       editingNodeId,
       recentEdits,
+      selectedPalette,
       setNodes,
       setActiveNodeId,
       setEditingNodeId,
       recordEdit,
       applyDraftToNode,
+      setSelectedPalette,
     }),
-    [nodes, activeNodeId, editingNodeId, recentEdits, setNodes, recordEdit, applyDraftToNode],
+    [nodes, activeNodeId, editingNodeId, recentEdits, selectedPalette, setNodes, recordEdit, applyDraftToNode],
   );
 
   return <CanvasContext.Provider value={value}>{children}</CanvasContext.Provider>;

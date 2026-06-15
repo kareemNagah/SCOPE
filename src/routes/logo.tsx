@@ -66,6 +66,26 @@ function LogoPage() {
   const [result, setResult] = useState<LogoResult | null>(null);
 
   useEffect(() => {
+    // Pre-populate from BrandIdentityGate selections if available
+    try {
+      const lastWordmark = localStorage.getItem("scope_last_wordmark");
+      const lastConcept = localStorage.getItem("scope_last_concept");
+      const lastFont = localStorage.getItem("scope_last_font");
+      if (lastWordmark) setWordmark(lastWordmark);
+      if (lastConcept) {
+        const match = concepts.find((c) => c.name === lastConcept);
+        if (match) setConceptId(match.id);
+      }
+      if (lastFont) {
+        const match = fontPairs.find((f) => f.display === lastFont);
+        if (match) setFontId(match.id);
+      }
+    } catch {
+      // localStorage unavailable
+    }
+  }, []);
+
+  useEffect(() => {
     if (search.session) {
       api.getLogo(search.session).then((res) => {
         if (res) {
@@ -207,15 +227,23 @@ function LogoPage() {
             className="relative flex h-[360px] items-center justify-center overflow-hidden rounded-2xl"
             style={{ background: previewBg }}
           >
-            <div className="flex items-center gap-5">
-              <LogoMark size={88} colors={palette.colors} />
-              <span
-                className="text-6xl font-semibold tracking-tight text-white"
-                style={{ fontFamily: font.stack }}
-              >
-                {wordmark}
-              </span>
-            </div>
+            {result?.generated_image ? (
+              <img
+                src={result.generated_image}
+                alt="AI Generated Logo"
+                className="max-h-[260px] max-w-[260px] object-contain rounded-xl shadow-[0_12px_30px_rgba(0,0,0,0.4)] border border-white/10"
+              />
+            ) : (
+              <div className="flex items-center gap-5">
+                <LogoMark size={88} colors={palette.colors} />
+                <span
+                  className="text-6xl font-semibold tracking-tight text-white"
+                  style={{ fontFamily: font.stack }}
+                >
+                  {wordmark}
+                </span>
+              </div>
+            )}
             <span className="absolute bottom-3 left-4 text-[10px] uppercase tracking-[0.18em] text-white/60">
               {concept.name} · {palette.name} · {font.display}
             </span>

@@ -12,6 +12,14 @@ export type Node3D = {
 };
 
 const PALETTE = ["#9F7AEA", "#6B46C1", "#4299E1", "#ED64A6", "#ED8936", "#7C3AED"];
+const CANONICAL_NODE_TITLES: Record<string, string> = {
+  mission: "Mission",
+  vision: "Vision",
+  persona: "Target Persona",
+  values: "Core Values",
+  tone: "Voice & Tone",
+  positioning: "Brand Promise",
+};
 
 import type { BrandNode } from "@/lib/api";
 
@@ -35,7 +43,7 @@ export function backendNodesToGraph(nodes: BrandNode[]): Node3D[] {
     
     return {
       id: `${n.type}-${i}`,
-      title: n.title,
+      title: CANONICAL_NODE_TITLES[n.type] ?? n.title,
       value: n.content,
       position: [x, y, z],
       color: PALETTE[i % PALETTE.length],
