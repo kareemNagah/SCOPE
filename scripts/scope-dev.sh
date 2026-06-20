@@ -110,8 +110,10 @@ if [ "$STOP" -eq 1 ]; then
 fi
 
 # ── 1. free ports ────────────────────────────────────────────────────────────
-step "Freeing ports 8000, 8080, 8081..."
-free_port 8000; free_port 8080; free_port 8081
+# Leave :8000 alone here. In the WSL2 setup it is Docker Compose's published
+# API port, and killing its listener can break a running container's port proxy.
+step "Freeing frontend ports 8080 and 8081..."
+free_port 8080; free_port 8081
 
 # ── 2. ensure backend/.env ───────────────────────────────────────────────────
 if [ ! -f backend/.env ]; then

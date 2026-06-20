@@ -61,6 +61,18 @@ async def create_tables() -> None:
         await conn.execute(
             text("ALTER TABLE briefs ADD COLUMN IF NOT EXISTS marketing_standards TEXT DEFAULT '{}';")
         )
+        for column_ddl in (
+            "ALTER TABLE briefs ADD COLUMN IF NOT EXISTS brand_name_ar VARCHAR(500) DEFAULT '';",
+            "ALTER TABLE briefs ADD COLUMN IF NOT EXISTS brand_name_en VARCHAR(500) DEFAULT '';",
+            "ALTER TABLE briefs ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'en';",
+            "ALTER TABLE briefs ADD COLUMN IF NOT EXISTS one_line_concept TEXT DEFAULT '';",
+            "ALTER TABLE briefs ADD COLUMN IF NOT EXISTS market_lens TEXT DEFAULT '';",
+            "ALTER TABLE briefs ADD COLUMN IF NOT EXISTS visual_direction TEXT DEFAULT '[]';",
+            "ALTER TABLE briefs ADD COLUMN IF NOT EXISTS moodboard_images TEXT DEFAULT '[]';",
+            "ALTER TABLE briefs ADD COLUMN IF NOT EXISTS visual_identity TEXT DEFAULT '{}';",
+            "ALTER TABLE logo_results ADD COLUMN IF NOT EXISTS generated_images TEXT;",
+        ):
+            await conn.execute(text(column_ddl))
 
 
 async def dispose_engine() -> None:

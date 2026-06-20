@@ -1,5 +1,6 @@
 import { Upload, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { extractImageFiles, filesToFileList, usePasteImages } from "@/lib/usePasteImages";
 
 interface MoodboardGridProps {
   files: File[];
@@ -10,6 +11,15 @@ interface MoodboardGridProps {
 export function MoodboardGrid({ files, onAddFiles, onRemoveFile }: MoodboardGridProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
+
+  const addPastedFiles = useCallback(
+    (pasted: File[]) => {
+      if (pasted.length) onAddFiles(filesToFileList(pasted));
+    },
+    [onAddFiles],
+  );
+
+  usePasteImages(addPastedFiles);
 
   useEffect(() => {
     const urls = files.map((file) => URL.createObjectURL(file));
@@ -26,8 +36,22 @@ export function MoodboardGrid({ files, onAddFiles, onRemoveFile }: MoodboardGrid
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const pasted = extractImageFiles(e.nativeEvent);
+    if (pasted.length) {
+      e.preventDefault();
+      e.stopPropagation();
+      addPastedFiles(pasted);
+    }
+  };
+
   return (
-    <div className="glass mx-auto mt-6 flex flex-wrap justify-center gap-3 rounded-2xl p-4 max-w-[600px]">
+    <div
+      tabIndex={0}
+      onPaste={handlePaste}
+      title="Click here, then paste an image (Ctrl+V)"
+      className="glass mx-auto mt-6 flex flex-wrap justify-center gap-3 rounded-2xl p-4 max-w-[600px] outline-none focus-within:ring-1 focus-within:ring-foreground/20"
+    >
       {previews.map((url, i) => (
         <div
           key={`${files[i]?.name || i}-${i}`}
@@ -57,7 +81,12 @@ export function MoodboardGrid({ files, onAddFiles, onRemoveFile }: MoodboardGrid
           aria-label="Upload reference image"
         >
           <Upload size={18} strokeWidth={1.8} />
-          <span className="mt-1.5 text-[9px] font-bold uppercase tracking-wider font-sans">Attach</span>
+          <span className="mt-1.5 text-[9px] font-bold uppercase tracking-wider font-sans">
+            Attach
+          </span>
+          <span className="text-[8px] uppercase tracking-wider text-muted-foreground/70">
+            paste anywhere
+          </span>
         </button>
       )}
 

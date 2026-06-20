@@ -32,7 +32,7 @@ class Settings(BaseSettings):
         default="https://openrouter.ai/api/v1",
         validation_alias=AliasChoices("OPENROUTER_BASE_URL", "OPENAI_API_BASE"),
     )
-    scope_text_model: str = Field(default="google/gemini-2.5-flash")
+    scope_text_model: str = Field(default="openai/gpt-4o")
     scope_multimodal_model: str = Field(default="google/gemini-3.1-flash-image-preview")
     scope_image_model: str = Field(default="google/gemini-3.1-flash-image-preview")
     scope_site_url: str = Field(default="http://localhost:8080")

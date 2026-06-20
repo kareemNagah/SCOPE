@@ -32,11 +32,18 @@ class BriefResult(BaseModel):
     """Structured output from the brief analysis endpoint."""
 
     brand_name: str
+    brand_name_ar: str = ""
+    brand_name_en: str = ""
+    language: str = "en"
     industry: str
+    one_line_concept: str = ""
     summary: str
+    market_lens: str = ""
     region: str
     pillars: BriefPillars
     marketing_standards: MarketingStandards
+    visual_direction: List[str] = []
     visual_cues: List[str]
     competitive_signals: List[str]
     recommended_next: str
+    moodboard_images: List[str] = []

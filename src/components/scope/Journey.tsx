@@ -16,6 +16,7 @@ export const journey: JourneyStep[] = [
   { id: "canvas", label: "Strategy", sub: "Edit the 6 pillars in 3D", to: "/canvas" },
   { id: "identity", label: "Identity", sub: "Palettes & typography", to: "/identity" },
   { id: "logo", label: "Logo", sub: "Generate the mark", to: "/logo" },
+  { id: "mockups", label: "Mockups", sub: "Brand in the world", to: "/mockups" },
   { id: "export", label: "Export", sub: "Portable Brain", to: "/export" },
 ];
 

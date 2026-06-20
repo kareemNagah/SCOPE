@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SigninRouteImport } from './routes/signin'
+import { Route as MockupsRouteImport } from './routes/mockups'
 import { Route as MarketingRouteImport } from './routes/marketing'
 import { Route as LogoRouteImport } from './routes/logo'
 import { Route as IdentityRouteImport } from './routes/identity'
@@ -26,6 +27,11 @@ const SignupRoute = SignupRouteImport.update({
 const SigninRoute = SigninRouteImport.update({
   id: '/signin',
   path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MockupsRoute = MockupsRouteImport.update({
+  id: '/mockups',
+  path: '/mockups',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MarketingRoute = MarketingRouteImport.update({
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/identity': typeof IdentityRoute
   '/logo': typeof LogoRoute
   '/marketing': typeof MarketingRoute
+  '/mockups': typeof MockupsRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/identity': typeof IdentityRoute
   '/logo': typeof LogoRoute
   '/marketing': typeof MarketingRoute
+  '/mockups': typeof MockupsRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/identity': typeof IdentityRoute
   '/logo': typeof LogoRoute
   '/marketing': typeof MarketingRoute
+  '/mockups': typeof MockupsRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/identity'
     | '/logo'
     | '/marketing'
+    | '/mockups'
     | '/signin'
     | '/signup'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/identity'
     | '/logo'
     | '/marketing'
+    | '/mockups'
     | '/signin'
     | '/signup'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/identity'
     | '/logo'
     | '/marketing'
+    | '/mockups'
     | '/signin'
     | '/signup'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   IdentityRoute: typeof IdentityRoute
   LogoRoute: typeof LogoRoute
   MarketingRoute: typeof MarketingRoute
+  MockupsRoute: typeof MockupsRoute
   SigninRoute: typeof SigninRoute
   SignupRoute: typeof SignupRoute
 }
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/signin'
       fullPath: '/signin'
       preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mockups': {
+      id: '/mockups'
+      path: '/mockups'
+      fullPath: '/mockups'
+      preLoaderRoute: typeof MockupsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/marketing': {
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   IdentityRoute: IdentityRoute,
   LogoRoute: LogoRoute,
   MarketingRoute: MarketingRoute,
+  MockupsRoute: MockupsRoute,
   SigninRoute: SigninRoute,
   SignupRoute: SignupRoute,
 }

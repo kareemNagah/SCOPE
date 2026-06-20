@@ -75,6 +75,7 @@ def build_brief_context(
 ) -> str:
     return (
         f"Brand: {brief_payload.get('brand_name', '')}\n"
+        f"Language: {brief_payload.get('language', 'en')}\n"
         f"Industry: {brief_payload.get('industry', '')}\n"
         f"Summary: {brief_payload.get('summary', '')}\n"
         f"Pillars: {json.dumps(brief_payload.get('pillars', {}), ensure_ascii=True)}\n"
@@ -266,6 +267,7 @@ async def chat(
         )
         brief_payload = {
             "brand_name": db_brief.brand_name,
+            "language": db_brief.language,
             "industry": db_brief.industry,
             "summary": db_brief.summary,
             "pillars": json.loads(db_brief.pillars or "{}"),

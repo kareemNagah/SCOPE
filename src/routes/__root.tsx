@@ -14,6 +14,26 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { GlassFilter } from "@/components/ui/liquid-glass-button";
 
+function clearGeneratedBrandCache() {
+  if (typeof window === "undefined") return;
+  const exactKeys = new Set([
+    "scope_last_palette",
+    "scope_last_font",
+    "scope_last_concept",
+    "scope_last_concepts",
+    "scope_last_wordmark",
+  ]);
+  for (const key of Object.keys(localStorage)) {
+    if (
+      exactKeys.has(key) ||
+      key.startsWith("scope_selected_palette:") ||
+      key.startsWith("scope_visual_identity:")
+    ) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -122,6 +142,10 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    clearGeneratedBrandCache();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
@@ -131,5 +155,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-
-

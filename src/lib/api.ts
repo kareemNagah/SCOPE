@@ -3,6 +3,8 @@
  * Centralized fetch layer for communicating with the FastAPI backend.
  */
 
+import { streamPost, type SSEvent } from "./sse";
+
 const API_BASE = "http://localhost:8000";
 
 // --- Auth token helpers ---
@@ -62,6 +64,19 @@ export type ProposedPalette = {
   recommended: boolean;
 };
 
+export type VisualIdentity = {
+  palettes?: { name: string; colors: string[]; mood?: string; usage_note?: string }[];
+  font_pairings?: { display: string; body: string; mood?: string; rationale?: string }[];
+  logo_concepts?: { name: string; desc?: string; description?: string; icon?: string }[];
+};
+
+export type ChatHistoryItem = {
+  id: string;
+  role: string;
+  text: string;
+  at: number;
+};
+
 export type ChatResponse = {
   response: string;
   mode: ChatMode;
@@ -91,12 +106,50 @@ export type MarketingHook = {
   body: string;
   alienates: boolean;
   why: string;
+  type?: string;
+  pair_with?: string;
 };
 
 export type MarketingResult = {
   blueprint: MarketingBlueprint;
   personas: MarketingPersona[];
   hooks: MarketingHook[];
+};
+
+// --- Marketing Engine + Ideas Factory (Refraction Engine) ---
+
+export type AdVariant = {
+  label: string;
+  headline: string;
+  subheadline: string;
+  body: string;
+  cta: string;
+  caption: string;
+  copy_logic: { audience_trigger: string; tone_alignment: string; ab_hypothesis: string };
+  image_prompt: string;
+};
+
+export type SocialPillar = {
+  name: string;
+  description: string;
+  example_content: string;
+  visual_direction: string;
+};
+
+export type MarketingEngine = {
+  brand_identity: Record<string, unknown>;
+  product_blueprint: Record<string, unknown>;
+  audience: Record<string, unknown>;
+  visual_dna: Record<string, unknown>;
+  social_plan: Record<string, unknown>;
+  hooks: { hooks?: MarketingHook[]; negative_hooks?: string[] };
+  ad_copy: { variants?: AdVariant[] };
+  ad_creatives: string[];
+  context_data: Record<string, string>;
+  flags: Record<string, boolean>;
+  // Legacy convenience for the dashboard cards.
+  blueprint: MarketingBlueprint;
+  personas: MarketingPersona[];
 };
 
 export type MarketingStandards = {
@@ -114,6 +167,28 @@ export type LogoResult = {
   tagline: string;
   variations: { name: string; description: string }[];
   generated_image?: string;
+  generated_images?: string[];
+  settings?: Record<string, string>;
+};
+
+export type LogoHistoryItem = LogoResult & {
+  id: number;
+  settings: Record<string, string>;
+  created_at: string | null;
+};
+
+export type MockupType = "business_card" | "signage" | "packaging" | "social_apparel";
+
+export type MockupResult = {
+  mockup_types: string[];
+  source_logo?: string | null;
+  generated_images?: string[];
+  settings?: Record<string, string>;
+};
+
+export type MockupHistoryItem = MockupResult & {
+  id: number;
+  created_at: string | null;
 };
 
 export type HistoryVersion = {
@@ -126,8 +201,13 @@ export type HistoryVersion = {
 
 export type BriefResult = {
   brand_name: string;
+  brand_name_ar?: string;
+  brand_name_en?: string;
+  language?: "ar" | "en";
   industry: string;
+  one_line_concept?: string;
   summary: string;
+  market_lens?: string;
   region: "usa" | "mena" | "gcc";
   pillars: {
     mission: string;
@@ -138,9 +218,11 @@ export type BriefResult = {
     promise: string;
   };
   marketing_standards: MarketingStandards;
+  visual_direction?: string[];
   visual_cues: string[];
   competitive_signals: string[];
   recommended_next: string;
+  moodboard_images?: string[];
 };
 
 async function handleResponse<T>(res: Response): Promise<T> {
@@ -218,8 +300,7 @@ export const api = {
   // --- Core API ---
 
   /** Health check */
-  health: () =>
-    fetch(`${API_BASE}/api/health`).then((r) => handleResponse<{ status: string }>(r)),
+  health: () => fetch(`${API_BASE}/api/health`).then((r) => handleResponse<{ status: string }>(r)),
 
   /** Send a chat message and get AI response + updated nodes */
   chat: (
@@ -264,36 +345,78 @@ export const api = {
       headers: { ...getAuthHeaders() },
     }).then((r) => handleResponse<BrandNode[]>(r)),
 
-  /** Run marketing analysis */
-  analyzeMarketing: (data: {
-    session_id: string;
-    materials?: string;
-    pricing_tier?: string;
-    region?: string;
-    channels?: string;
-    category?: string;
-    stage?: string;
-  }) =>
-    fetch(`${API_BASE}/api/marketing/analyze`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: JSON.stringify(data),
-    }).then((r) => handleResponse<MarketingResult>(r)),
-
-  /** Get existing marketing result for a session */
+  /** Get the full marketing engine state for a session */
   getMarketing: (sessionId: string) =>
     fetch(`${API_BASE}/api/marketing/${sessionId}`, {
       headers: { ...getAuthHeaders() },
-    }).then((r) => handleResponse<MarketingResult | null>(r)),
+    }).then((r) => handleResponse<MarketingEngine | null>(r)),
+
+  /** Save a user edit to one engine step (marks downstream steps stale) */
+  putMarketingStep: (sessionId: string, name: string, data: Record<string, unknown>) =>
+    fetch(`${API_BASE}/api/marketing/${sessionId}/step/${name}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify({ data }),
+    }).then((r) => handleResponse<{ status: string; flags: Record<string, boolean> }>(r)),
+
+  // --- Streaming step runners (Centrifuge SSE) ---
+
+  /** Steps 1→2→3: brand identity + product blueprint + audience (multipart) */
+  streamMarketingAnalyze: (form: FormData, onEvent: (e: SSEvent) => void) =>
+    streamPost("/api/marketing/analyze", form, onEvent),
+
+  /** Step 4: Visual DNA from moodboard images (multipart) */
+  streamVisualDna: (form: FormData, onEvent: (e: SSEvent) => void) =>
+    streamPost("/api/marketing/ideas/visual-dna", form, onEvent),
+
+  /** Step 5: Social Media Plan */
+  streamSocialPlan: (
+    body: {
+      session_id: string;
+      reference_session_id?: string;
+      timeframe?: string;
+      platforms?: string;
+      content_mix?: string;
+    },
+    onEvent: (e: SSEvent) => void,
+  ) => streamPost("/api/marketing/ideas/social-plan", body, onEvent),
+
+  /** Step 6: Hook Generator */
+  streamHooks: (
+    body: {
+      session_id: string;
+      reference_session_id?: string;
+      platform?: string;
+      hook_type?: string;
+      quantity?: number;
+    },
+    onEvent: (e: SSEvent) => void,
+  ) => streamPost("/api/marketing/ideas/hooks", body, onEvent),
+
+  /** Step 7: Ad Copy A/B + creatives */
+  streamAdCopy: (
+    body: {
+      session_id: string;
+      reference_session_id?: string;
+      selected_hook_ids?: string[];
+      objective?: string;
+      format?: string;
+      language?: string;
+      variants?: number;
+    },
+    onEvent: (e: SSEvent) => void,
+  ) => streamPost("/api/marketing/ideas/ad-copy", body, onEvent),
 
   /** Generate logo concept */
   generateLogo: (data: {
     session_id: string;
     wordmark?: string;
     concept?: string;
+    concepts?: { name: string; desc: string }[];
     palette_name?: string;
     font_name?: string;
     brand_context?: string;
+    reference_images?: string[];
   }) =>
     fetch(`${API_BASE}/api/logo/generate`, {
       method: "POST",
@@ -301,11 +424,43 @@ export const api = {
       body: JSON.stringify(data),
     }).then((r) => handleResponse<LogoResult>(r)),
 
+  /** Generate brand mockups from the latest logo + brand references */
+  generateMockups: (data: {
+    session_id: string;
+    logo_image?: string;
+    mockup_types?: string[];
+    brand_context?: string;
+    reference_images?: string[];
+  }) =>
+    fetch(`${API_BASE}/api/mockup/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(data),
+    }).then((r) => handleResponse<MockupResult>(r)),
+
+  /** Get the latest mockup result for a session */
+  getMockup: (sessionId: string) =>
+    fetch(`${API_BASE}/api/mockup/${sessionId}`, {
+      headers: { ...getAuthHeaders() },
+    }).then((r) => handleResponse<MockupResult | null>(r)),
+
+  /** Get all mockup generation results for a session (gallery history) */
+  getAllMockups: (sessionId: string) =>
+    fetch(`${API_BASE}/api/mockup/${sessionId}/all`, {
+      headers: { ...getAuthHeaders() },
+    }).then((r) => handleResponse<MockupHistoryItem[]>(r)),
+
   /** Get existing logo result for a session */
   getLogo: (sessionId: string) =>
     fetch(`${API_BASE}/api/logo/${sessionId}`, {
       headers: { ...getAuthHeaders() },
     }).then((r) => handleResponse<LogoResult | null>(r)),
+
+  /** Get all logo generation results for a session (gallery history) */
+  getAllLogos: (sessionId: string) =>
+    fetch(`${API_BASE}/api/logo/${sessionId}/all`, {
+      headers: { ...getAuthHeaders() },
+    }).then((r) => handleResponse<LogoHistoryItem[]>(r)),
 
   /** Analyze a brief with text + multiple images (multipart upload) */
   analyzeBrief: (formData: FormData) =>
@@ -315,11 +470,30 @@ export const api = {
       body: formData,
     }).then((r) => handleResponse<BriefResult>(r)),
 
+  /** Generate (or regenerate) moodboard reference images for a brief */
+  generateMoodboard: (
+    sessionId: string,
+    opts?: { visualDirection?: string[]; count?: number; files?: File[] },
+  ) => {
+    const fd = new FormData();
+    fd.append("session_id", sessionId);
+    fd.append("count", String(opts?.count ?? 4));
+    fd.append("visual_direction", JSON.stringify(opts?.visualDirection ?? []));
+    (opts?.files ?? []).forEach((f) => fd.append("images", f));
+    return fetch(`${API_BASE}/api/brief/moodboard`, {
+      method: "POST",
+      headers: { ...getAuthHeaders() },
+      body: fd,
+    }).then((r) => handleResponse<{ images: string[]; visual_direction: string[] }>(r));
+  },
+
   /** Get full brief details and status */
   getBrief: (sessionId: string) =>
     fetch(`${API_BASE}/api/brief/${sessionId}`, {
       headers: { ...getAuthHeaders() },
-    }).then((r) => handleResponse<BriefResult & { approved: boolean; strategy_confirmed: boolean }>(r)),
+    }).then((r) =>
+      handleResponse<BriefResult & { approved: boolean; strategy_confirmed: boolean }>(r),
+    ),
 
   /** Approve the brief to initialize the canvas */
   approveBrief: (sessionId: string) =>
@@ -339,25 +513,26 @@ export const api = {
   getMyBriefs: () =>
     fetch(`${API_BASE}/api/briefs`, {
       headers: { ...getAuthHeaders() },
-    }).then((r) => handleResponse<any[]>(r)),
+    }).then((r) => handleResponse<BriefResult[]>(r)),
 
   /** Get minimal preview data for BrandIdentityGate (brand name, visual cues, node summaries) */
   identityPreview: (sessionId: string) =>
     fetch(`${API_BASE}/api/brief/identity-preview/${sessionId}`, {
       headers: { ...getAuthHeaders() },
-    }).then(
-      (r) =>
-        handleResponse<{
-          brand_name: string;
-          visual_cues: string[];
-          nodes_summary: { type: string; title: string; content: string }[];
-          strategy_confirmed: boolean;
-        }>(r),
+    }).then((r) =>
+      handleResponse<{
+        brand_name: string;
+        visual_cues: string[];
+        visual_direction: string[];
+        nodes_summary: { type: string; title: string; content: string }[];
+        strategy_confirmed: boolean;
+        visual_identity?: VisualIdentity;
+      }>(r),
     ),
 
   /** Get historical chat messages for a session */
   getChatHistory: (sessionId: string) =>
     fetch(`${API_BASE}/api/chat/history/${sessionId}`, {
       headers: { ...getAuthHeaders() },
-    }).then((r) => handleResponse<any[]>(r)),
+    }).then((r) => handleResponse<ChatHistoryItem[]>(r)),
 };

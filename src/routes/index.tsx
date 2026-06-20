@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 
 import { MoodboardGrid } from "@/components/scope/MoodboardGrid";
+import { BriefMoodboard } from "@/components/scope/BriefMoodboard";
 import { MeshBackground } from "@/components/scope/MeshBackground";
 import { PromptBar } from "@/components/scope/PromptBar";
 import { JourneyStepper } from "@/components/scope/Journey";
@@ -47,6 +48,10 @@ export const Route = createFileRoute("/")({
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap",
+      },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap",
       },
     ],
   }),
@@ -203,6 +208,9 @@ function StudioLanding() {
   const [files, setFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [briefResult, setBriefResult] = useState<LoadedBrief | null>(null);
+  const [directions, setDirections] = useState<string[]>([]);
+  const [moodboard, setMoodboard] = useState<string[]>([]);
+  const [moodboardLoading, setMoodboardLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID());
   const [savedBriefs, setSavedBriefs] = useState<SavedBrief[]>([]);
   const navigate = useNavigate();
@@ -214,6 +222,10 @@ function StudioLanding() {
 
   useEffect(() => {
     if (sessionParam) {
+      setBriefResult(null);
+      setDirections([]);
+      setMoodboard([]);
+      setMoodboardLoading(false);
       setSessionId(sessionParam);
       setIsLoading(true);
       api
@@ -237,6 +249,9 @@ function StudioLanding() {
     }
 
     setBriefResult(null);
+    setDirections([]);
+    setMoodboard([]);
+    setMoodboardLoading(false);
     setSessionId(crypto.randomUUID());
   }, [sessionParam]);
 
@@ -256,6 +271,22 @@ function StudioLanding() {
     () => (briefResult ? buildBriefPreview(briefResult) : null),
     [briefResult],
   );
+  const briefLang: "ar" | "en" =
+    briefResult?.language ??
+    (/[؀-ۿ]/.test(briefResult?.brand_name ?? "") ? "ar" : "en");
+  const briefDir = briefLang === "ar" ? "rtl" : "ltr";
+
+  useEffect(() => {
+    if (!briefResult) return;
+    const seed =
+      (briefResult.visual_direction?.length ? briefResult.visual_direction : briefResult.visual_cues) ??
+      [];
+    setDirections(seed);
+  }, [briefResult]);
+
+  useEffect(() => {
+    setMoodboard(briefResult?.moodboard_images ?? []);
+  }, [briefResult]);
 
   const handleAddFiles = (newFiles: FileList) => {
     setFiles((prev) => {
@@ -326,12 +357,34 @@ function StudioLanding() {
     setRegion("usa");
     setFiles([]);
     setBriefResult(null);
+    setDirections([]);
+    setMoodboard([]);
+    setMoodboardLoading(false);
     const nextSessionId = crypto.randomUUID();
     setSessionId(nextSessionId);
     navigate({
       to: "/",
       search: {},
     });
+  };
+
+  const handleRegenerateMoodboard = async () => {
+    if (!briefResult || moodboardLoading) return;
+    setMoodboardLoading(true);
+    try {
+      const res = await api.generateMoodboard(sessionId, {
+        visualDirection: directions.filter((d) => d.trim()),
+        count: 4,
+        files,
+      });
+      setMoodboard(res.images);
+      if (res.images.length === 0) toast.message(briefLang === "ar" ? "تعذّر توليد الصور" : "No images generated");
+    } catch (e) {
+      console.error(e);
+      toast.error(briefLang === "ar" ? "فشل توليد اللوحة" : "Moodboard generation failed");
+    } finally {
+      setMoodboardLoading(false);
+    }
   };
 
   return (
@@ -353,7 +406,39 @@ function StudioLanding() {
           </p>
 
           <AnimatePresence mode="wait">
-            {!briefResult ? (
+            {isLoading && !briefResult ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="mx-auto mt-12 max-w-[960px]"
+              >
+                <div className="rounded-3xl border border-slate-800/80 bg-slate-950/85 p-6 shadow-[0_30px_70px_-20px_rgba(139,92,246,0.25)] md:p-8">
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-4 w-40 rounded-full bg-slate-800/90" />
+                    <div className="h-14 w-2/3 rounded-2xl bg-slate-800/80" />
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="h-10 rounded-full bg-slate-800/75" />
+                      <div className="h-10 rounded-full bg-slate-800/75" />
+                      <div className="h-10 rounded-full bg-slate-800/75" />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="aspect-square rounded-2xl bg-slate-800/75" />
+                      <div className="aspect-square rounded-2xl bg-slate-800/75" />
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                      <div className="h-44 rounded-2xl bg-slate-800/75" />
+                      <div className="space-y-4">
+                        <div className="h-32 rounded-2xl bg-slate-800/75" />
+                        <div className="h-32 rounded-2xl bg-slate-800/75" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : !briefResult ? (
               <motion.div
                 key="builder"
                 initial={{ opacity: 0, y: 15 }}
@@ -394,8 +479,9 @@ function StudioLanding() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 200, damping: 25 }}
-                dir={detectedLang === "ar" ? "rtl" : "ltr"}
-                className="mx-auto mt-12 max-w-[960px] text-left"
+                dir={briefDir}
+                lang={briefLang}
+                className="mx-auto mt-12 max-w-[960px] text-start"
               >
                 <WaveBorder
                   tone="violet"
@@ -406,19 +492,49 @@ function StudioLanding() {
                     <div>
                       <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-scope-purple">
                         <Sparkles size={11} />
-                        {detectedLang === "ar" ? "تم إنشاء الموجز" : "Starter Brief Generated"}
+                        {briefLang === "ar" ? "تم إنشاء الموجز" : "Starter Brief Generated"}
                       </span>
-                      <h2 className="mt-1 font-display text-4xl text-white">
-                        {briefResult.brand_name}
-                      </h2>
-                      <p className="mt-0.5 text-xs font-medium tracking-wide text-slate-400">
+                      {briefResult.brand_name_ar ? (
+                        <>
+                          <h2 className="mt-1 font-arabic-display text-5xl leading-none text-white md:text-6xl">
+                            {briefResult.brand_name_ar}
+                          </h2>
+                          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                            {briefResult.brand_name_en || briefResult.brand_name}
+                          </p>
+                        </>
+                      ) : (
+                        <h2 className="mt-1 font-display text-4xl text-white">
+                          {briefResult.brand_name}
+                        </h2>
+                      )}
+                      {briefResult.one_line_concept ? (
+                        <p className="mt-2 max-w-2xl text-sm italic leading-6 text-slate-300">
+                          {briefResult.one_line_concept}
+                        </p>
+                      ) : null}
+                      <p className="mt-1 text-xs font-medium tracking-wide text-slate-400">
                         {briefResult.industry} | {briefResult.region.toUpperCase()}
                       </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <PreviewMeta
+                          label={briefLang === "ar" ? "الصناعة" : "Industry"}
+                          value={briefResult.industry}
+                        />
+                        <PreviewMeta
+                          label={briefLang === "ar" ? "المنطقة" : "Region"}
+                          value={briefResult.region.toUpperCase()}
+                        />
+                        <PreviewMeta
+                          label={briefLang === "ar" ? "الشخصية" : "Persona"}
+                          value={compactText(briefResult.pillars.persona, 1, 40)}
+                        />
+                      </div>
                       {/* Generated color palette from visual_cues */}
                       {briefResult.visual_cues?.length > 0 && (
                         <div className="mt-3 flex items-center gap-2">
                           <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                            {detectedLang === "ar" ? "لوحة الألوان" : "Palette"}
+                            {briefLang === "ar" ? "لوحة الألوان" : "Palette"}
                           </span>
                           <div className="flex gap-1">
                             {visualCuesToPalette(briefResult.visual_cues).map((hex, i) => (
@@ -464,36 +580,83 @@ function StudioLanding() {
                     </div>
                   </div>
 
+                  <div className="mt-6">
+                    <BriefMoodboard
+                      uploaded={files}
+                      generated={moodboard}
+                      isLoading={moodboardLoading}
+                      onRegenerate={handleRegenerateMoodboard}
+                      dir={briefDir}
+                      lang={briefLang}
+                    />
+                  </div>
+
                   <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-                    <div className="rounded-2xl border border-slate-800/70 bg-slate-900/35 p-4">
-                      <h3 className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-400">
-                        <FileText size={12} /> Brief Snapshot
+                    <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 transition-all duration-300 hover:border-white/15">
+                      <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-300">
+                        <FileText size={13} className="text-scope-purple" /> {briefLang === "ar" ? "ملخص الموجز" : "Brief Snapshot"}
                       </h3>
-                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-200">
+                      <p className="mt-3 text-[14px] leading-relaxed text-slate-200">
                         {briefPreview?.summary ?? briefResult.summary}
                       </p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <PreviewMeta label="Industry" value={briefResult.industry} />
-                        <PreviewMeta label="Region" value={briefResult.region.toUpperCase()} />
-                        <PreviewMeta
-                          label="Persona"
-                          value={briefPreview?.persona ?? briefResult.pillars.persona}
-                        />
-                      </div>
                     </div>
 
                     <div className="grid gap-4">
+                      <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 transition-all duration-300 hover:border-white/15">
+                        <div className="flex items-center justify-between gap-3">
+                          <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            {briefLang === "ar" ? "الاتجاه البصري" : "Visual Direction"}
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={() => setDirections((prev) => [...prev, ""])}
+                            className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[11px] font-semibold text-slate-200 transition hover:bg-white/10 active:scale-95"
+                          >
+                            {briefLang === "ar" ? "إضافة اتجاه" : "Add direction"}
+                          </button>
+                        </div>
+                        <div className="mt-3.5 space-y-2">
+                          {directions.length > 0 ? (
+                            directions.map((direction, index) => (
+                              <div
+                                key={`direction-${index}`}
+                                className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/70 px-3.5 py-2 shadow-inner"
+                              >
+                                <input
+                                  value={direction}
+                                  onChange={(e) => {
+                                    const next = [...directions];
+                                    next[index] = e.target.value;
+                                    setDirections(next);
+                                  }}
+                                  dir="auto"
+                                  className="min-w-0 flex-1 bg-transparent text-[13px] text-slate-100 outline-none placeholder:text-slate-500"
+                                  placeholder={briefLang === "ar" ? "اكتب الاتجاه هنا" : "Write a direction"}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setDirections((prev) => prev.filter((_, i) => i !== index))}
+                                  className="rounded-full p-1 text-slate-500 transition hover:bg-white/10 hover:text-white"
+                                  aria-label={briefLang === "ar" ? "حذف الاتجاه" : "Remove direction"}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="rounded-xl border border-dashed border-white/5 bg-slate-950/35 px-3 py-4 text-xs text-slate-500 italic">
+                              {briefLang === "ar"
+                                ? "لا يوجد اتجاه بصري بعد."
+                                : "No visual direction yet."}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                       <CompactInsightList
-                        title="Visual Direction"
-                        items={briefPreview?.visualCues ?? []}
-                        tone="violet"
-                        emptyLabel="No visual direction yet."
-                      />
-                      <CompactInsightList
-                        title="Market Watchouts"
+                        title={briefLang === "ar" ? "تنبيهات السوق" : "Market Watchouts"}
                         items={briefPreview?.competitiveSignals ?? []}
                         tone="slate"
-                        emptyLabel="No market watchouts yet."
+                        emptyLabel={briefLang === "ar" ? "لا توجد تنبيهات بعد." : "No market watchouts yet."}
                       />
                     </div>
                   </div>
@@ -713,12 +876,12 @@ function PillarCard({
   desc: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+    <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4 transition-all duration-300 hover:border-scope-purple/30 hover:bg-slate-900/80 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
       <div className="flex items-center gap-2 text-scope-purple">
-        <Icon size={14} />
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-200">{title}</h4>
+        <Icon size={14} className="opacity-90" />
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200">{title}</h4>
       </div>
-      <p className="mt-2 line-clamp-3 text-xs leading-normal text-slate-400" title={desc}>
+      <p className="mt-2 line-clamp-4 text-[13px] leading-relaxed text-slate-300" title={desc}>
         {desc}
       </p>
     </div>
@@ -727,9 +890,9 @@ function PillarCard({
 
 function PreviewMeta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-full border border-slate-800 bg-slate-950/60 px-3 py-1.5">
-      <span className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</span>
-      <span className="ml-2 text-[11px] font-medium text-slate-200">{value}</span>
+    <div className="rounded-full border border-white/10 bg-slate-950/70 px-3.5 py-1.5 shadow-inner">
+      <span className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{label}</span>
+      <span className="ms-2 text-[11px] font-medium text-slate-200">{value}</span>
     </div>
   );
 }
@@ -747,28 +910,28 @@ function CompactInsightList({
 }) {
   const toneClass =
     tone === "violet"
-      ? "border-scope-purple/20 bg-scope-purple/8 text-slate-200"
-      : "border-slate-800 bg-slate-900/45 text-slate-300";
+      ? "border-scope-purple/20 bg-scope-purple/10 text-slate-200"
+      : "border-white/10 bg-slate-900/60 text-slate-200 hover:border-white/20";
 
   return (
-    <div className="rounded-2xl border border-slate-800/70 bg-slate-900/35 p-4">
-      <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{title}</h4>
+    <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 shadow-sm transition-all duration-300 hover:border-white/15">
+      <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">{title}</h4>
       {items.length > 0 ? (
-        <ul className="mt-3 space-y-2">
+        <ul className="mt-3 space-y-2.5">
           {items.map((item, index) => (
             <li
               key={`${title}-${item}`}
-              className={`flex items-start gap-2 rounded-xl border px-3 py-2 ${toneClass}`}
+              className={`flex items-start gap-3 rounded-xl border px-3.5 py-2.5 shadow-sm transition-all duration-300 ${toneClass}`}
             >
-              <span className="mt-0.5 inline-flex h-5 w-5 flex-none items-center justify-center rounded-full bg-white/6 text-[10px] font-semibold text-slate-300">
+              <span className="mt-0.5 inline-flex h-5 w-5 flex-none items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-slate-200">
                 {index + 1}
               </span>
-              <p className="min-w-0 text-xs leading-5">{item}</p>
+              <p className="min-w-0 text-[13px] leading-relaxed">{item}</p>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-xs text-slate-500">{emptyLabel}</p>
+        <p className="mt-3 text-xs text-slate-500 italic">{emptyLabel}</p>
       )}
     </div>
   );
@@ -937,19 +1100,19 @@ function TagStack({
   tone: "violet" | "slate" | "amber";
 }) {
   const styles = {
-    violet: "border-scope-purple/25 bg-scope-purple/10 text-scope-purple",
-    slate: "border-slate-800 bg-slate-900 text-slate-300",
-    amber: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+    violet: "border-scope-purple/30 bg-scope-purple/15 text-scope-purple brightness-110",
+    slate: "border-white/10 bg-slate-900/60 text-slate-200",
+    amber: "border-amber-500/30 bg-amber-500/15 text-amber-300 brightness-110",
   } as const;
 
   return (
-    <div>
-      <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{title}</h4>
-      <div className="mt-2 flex flex-wrap gap-1.5">
+    <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-4 transition-all duration-300 hover:border-white/15">
+      <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">{title}</h4>
+      <div className="mt-2.5 flex flex-wrap gap-2">
         {tags.map((tag) => (
           <span
             key={`${title}-${tag}`}
-            className={`rounded-full border px-2.5 py-1 text-[10px] font-medium ${styles[tone]}`}
+            className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-all duration-200 hover:scale-[1.02] ${styles[tone]}`}
           >
             {tag}
           </span>

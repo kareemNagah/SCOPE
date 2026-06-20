@@ -2,88 +2,10 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check, ChevronLeft, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
+import { buildImageInspiredPalettes, extractPaletteFromImageSources } from "@/lib/colorPalettes";
 import { useCanvas, type SelectedPalette } from "./CanvasContext";
 
 // ── Color derivation (mirrors identity.tsx) ──────────────────────────────────
-
-const COLOR_MAP: Record<string, string> = {
-  "midnight blue": "#1B2A4A",
-  navy: "#1a2744",
-  "deep blue": "#1e3a5f",
-  cobalt: "#0047AB",
-  teal: "#008080",
-  emerald: "#059669",
-  "forest green": "#166534",
-  sage: "#8A9A5B",
-  burgundy: "#800020",
-  crimson: "#DC143C",
-  rose: "#E11D48",
-  coral: "#F97316",
-  terracotta: "#C4622D",
-  amber: "#D97706",
-  gold: "#B45309",
-  cream: "#FEF3C7",
-  purple: "#7C3AED",
-  violet: "#6D28D9",
-  lavender: "#A78BFA",
-  indigo: "#4338CA",
-  charcoal: "#374151",
-  slate: "#475569",
-  silver: "#94A3B8",
-  "rose gold": "#BE8A8A",
-  black: "#0F172A",
-};
-
-function cueToHex(cue: string): string | null {
-  const lower = cue.toLowerCase();
-  for (const [key, val] of Object.entries(COLOR_MAP)) {
-    if (lower.includes(key)) return val;
-  }
-  return null;
-}
-
-function deriveFallbackPalettes(cues: string[]): SelectedPalette[] {
-  const raw: string[] = [];
-  for (const cue of cues) {
-    const hex = cueToHex(cue);
-    if (hex && !raw.includes(hex)) raw.push(hex);
-    if (raw.length >= 8) break;
-  }
-  if (raw.length < 3) raw.push("#1B2A4A", "#7C3AED", "#A78BFA", "#E11D48", "#F3E8D0");
-
-  const ensure4 = (arr: string[], fb: string[]): string[] => {
-    const out = [...arr];
-    for (const f of fb) {
-      if (out.length >= 4) break;
-      if (!out.includes(f)) out.push(f);
-    }
-    return out.slice(0, 4);
-  };
-
-  return [
-    {
-      name: "Primary Voice",
-      mood: "Brand Foundation",
-      colors: ensure4([raw[0], raw[1], raw[2], raw[3] ?? "#F8FAFC"], ["#F8FAFC", "#0F172A"]),
-    },
-    {
-      name: "Secondary Range",
-      mood: "Supporting Cast",
-      colors: ensure4(
-        [raw[2] ?? raw[0], raw[4] ?? raw[1], raw[5] ?? raw[3], "#F8FAFC"],
-        ["#F8FAFC", raw[0]],
-      ),
-    },
-    {
-      name: "Accent Edition",
-      mood: "Campaign Moments",
-      colors: ensure4(
-        [raw[raw.length - 1] ?? raw[0], raw[1], raw[0], raw[3] ?? "#1E293B"],
-        ["#1E293B", "#F8FAFC"],
-      ),
-    },
-  ];
-}
 
 function isLightHex(hex: string): boolean {
   const h = hex.replace("#", "");
@@ -93,6 +15,37 @@ function isLightHex(hex: string): boolean {
   const b = parseInt(h.slice(4, 6), 16);
   return (r * 299 + g * 587 + b * 114) / 1000 > 160;
 }
+
+function uniquePalettes(items: Array<SelectedPalette | null | undefined>): SelectedPalette[] {
+  const seen = new Set<string>();
+  const output: SelectedPalette[] = [];
+  for (const item of items) {
+    if (!item?.name || !item.colors?.length || seen.has(item.name)) continue;
+    seen.add(item.name);
+    output.push(item);
+  }
+  return output;
+}
+
+// ── Default fallback palettes (only used when LLM + images both fail) ────────
+
+const FALLBACK_PALETTES: SelectedPalette[] = [
+  {
+    name: "Midnight Foundation",
+    colors: ["#1B2A4A", "#7C3AED", "#A78BFA", "#F3E8D0"],
+    mood: "Brand Foundation",
+  },
+  {
+    name: "Warm Signal",
+    colors: ["#E11D48", "#D97706", "#F3E8D0", "#0F172A"],
+    mood: "Campaign Accent",
+  },
+  {
+    name: "Slate Range",
+    colors: ["#374151", "#475569", "#94A3B8", "#F8FAFC"],
+    mood: "Supporting Cast",
+  },
+];
 
 // ── Static options ────────────────────────────────────────────────────────────
 
@@ -136,37 +89,50 @@ export function BrandIdentityGate({
   const [selectedPaletteIdx, setSelectedPaletteIdx] = React.useState<number | null>(null);
   const [selectedFontIdx, setSelectedFontIdx] = React.useState<number>(0);
   const [selectedConceptIdx, setSelectedConceptIdx] = React.useState<number>(0);
-  const [nodeSummary, setNodeSummary] = React.useState<{ type: string; title: string; content: string }[]>([]);
+  const [nodeSummary, setNodeSummary] = React.useState<
+    { type: string; title: string; content: string }[]
+  >([]);
   const [loading, setLoading] = React.useState(true);
   const [confirming, setConfirming] = React.useState(false);
 
   React.useEffect(() => {
+    let cancelled = false;
     api
       .identityPreview(sessionId)
-      .then((data) => {
+      .then(async (data) => {
+        const brief = await api.getBrief(sessionId).catch(() => null);
+        if (cancelled) return;
+
         setBrandName(data.brand_name ?? "");
         setNodeSummary(data.nodes_summary ?? []);
 
-        // Build palette list: AI-selected from chat first, then fallbacks from visual_cues
-        const fallbacks = deriveFallbackPalettes(data.visual_cues ?? []);
-        if (chatPalette) {
-          // Prepend the AI palette, deduplicating by name
-          const rest = fallbacks.filter((p) => p.name !== chatPalette.name);
-          setPalettes([chatPalette, ...rest].slice(0, 3));
-          setSelectedPaletteIdx(0);
-        } else {
-          setPalettes(fallbacks);
-          setSelectedPaletteIdx(0);
-        }
-      })
-      .catch(() => {
-        const fallbacks = deriveFallbackPalettes([]);
-        setPalettes(fallbacks);
+        const llmPalettes = (data.visual_identity?.palettes ?? []) as SelectedPalette[];
+
+        const imageColors = await extractPaletteFromImageSources(brief?.moodboard_images ?? []);
+        if (cancelled) return;
+        const imagePalettes = buildImageInspiredPalettes(imageColors) as SelectedPalette[];
+
+        const nextPalettes = uniquePalettes([...imagePalettes, ...llmPalettes, chatPalette]).slice(
+          0,
+          3,
+        );
+
+        setPalettes(nextPalettes.length > 0 ? nextPalettes : FALLBACK_PALETTES);
         setSelectedPaletteIdx(0);
       })
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+      .catch(() => {
+        if (cancelled) return;
+        setPalettes(FALLBACK_PALETTES);
+        setSelectedPaletteIdx(0);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [chatPalette, sessionId]);
 
   const canConfirm = brandName.trim() && selectedPaletteIdx !== null && !confirming;
 
@@ -175,16 +141,6 @@ export function BrandIdentityGate({
     const palette = palettes[selectedPaletteIdx!];
     const font = FONTS[selectedFontIdx];
     const concept = CONCEPTS[selectedConceptIdx];
-
-    // Persist selections so logo.tsx can pre-populate regenerate UI
-    try {
-      localStorage.setItem("scope_last_palette", JSON.stringify(palette));
-      localStorage.setItem("scope_last_concept", concept.name);
-      localStorage.setItem("scope_last_font", font.display);
-      localStorage.setItem("scope_last_wordmark", brandName.trim());
-    } catch {
-      // localStorage unavailable in some SSR contexts
-    }
 
     setConfirming(true);
     try {
@@ -251,7 +207,10 @@ export function BrandIdentityGate({
             Loading brand data…
           </div>
         ) : (
-          <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-6" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.06) transparent" }}>
+          <div
+            className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-6"
+            style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.06) transparent" }}
+          >
             {/* Brand name */}
             <div>
               <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 mb-2">
@@ -275,6 +234,11 @@ export function BrandIdentityGate({
                 {chatPalette && selectedPaletteIdx === 0 && (
                   <span className="text-[9px] font-semibold uppercase tracking-widest text-scope-violet">
                     AI Selected
+                  </span>
+                )}
+                {!chatPalette && palettes[0]?.mood?.toLowerCase().includes("moodboard") && (
+                  <span className="text-[9px] font-semibold uppercase tracking-widest text-scope-violet">
+                    From Moodboard
                   </span>
                 )}
               </div>
@@ -301,13 +265,18 @@ export function BrandIdentityGate({
                         <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
                           {palette.mood}
                         </p>
-                        <p className="mt-0.5 text-[11px] font-medium text-slate-300">{palette.name}</p>
+                        <p className="mt-0.5 text-[11px] font-medium text-slate-300">
+                          {palette.name}
+                        </p>
                         <div className="mt-1 flex flex-wrap gap-0.5">
                           {palette.colors.slice(0, 4).map((c, i) => (
                             <span
                               key={`chip-${c}-${i}`}
                               className="rounded px-1 py-0.5 font-mono text-[7px]"
-                              style={{ background: c, color: isLightHex(c) ? "#0F172A" : "#F8FAFC" }}
+                              style={{
+                                background: c,
+                                color: isLightHex(c) ? "#0F172A" : "#F8FAFC",
+                              }}
                             >
                               {c.toUpperCase()}
                             </span>
@@ -368,7 +337,9 @@ export function BrandIdentityGate({
                         : "border-slate-800/50 bg-slate-900/20 hover:border-slate-700/50"
                     }`}
                   >
-                    <p className="text-[15px] font-medium text-slate-200 leading-none">{font.display}</p>
+                    <p className="text-[15px] font-medium text-slate-200 leading-none">
+                      {font.display}
+                    </p>
                     <p className="mt-1 text-[10px] text-slate-500">{font.body}</p>
                     {selectedFontIdx === idx && (
                       <Check size={10} className="mt-1 text-scope-violet" />

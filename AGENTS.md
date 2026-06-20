@@ -8,9 +8,10 @@ non-negotiable guardrails so any agent can run code safely.
 
 - **Frontend** (bun): `bun run dev` (Vite), `bun run build` (build + typecheck gate), `bun run lint`,
   `bun run format`. Path alias `@/` → `src/`. Frontend calls the backend at `http://localhost:8000`.
-- **Backend** (Python 3.11, from `backend/`): `pip install -r requirements.txt` then
-  `uvicorn app.main:app --reload --port 8000`. Or full stack: `docker compose up` (api `:8000`, db `:5432`).
-  Needs `backend/.env` with `OPENROUTER_API_KEY`. LLMs go through **OpenRouter**, not the Anthropic API.
+- **Backend** (Docker inside WSL 2): `docker compose up` runs the api container on `:8000` and db container
+  on `:5432`. Direct Python is still available from `backend/` with `pip install -r requirements.txt` then
+  `uvicorn app.main:app --reload --port 8000`. Needs `backend/.env` with `OPENROUTER_API_KEY`.
+  LLMs go through **OpenRouter**, not the Anthropic API.
 - No test suite exists; validate frontend changes with `bun run build` and backend imports with
   `python -c "import app.main"` (run inside `backend/`).
 

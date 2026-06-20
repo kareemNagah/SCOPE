@@ -23,14 +23,9 @@ const CANONICAL_NODE_TITLES: Record<string, string> = {
 
 import type { BrandNode } from "@/lib/api";
 
-export const initialNodes3D: Node3D[] = [
-  { id: "mission",  title: "Mission",  value: "Equip corporate athletes with regenerative gear.",     position: [ 0,  2.4,  0],  color: PALETTE[0] },
-  { id: "vision",   title: "Vision",   value: "Make sustainability the default in performance wear.", position: [ 2.4, 1.0,  0.6], color: PALETTE[1] },
-  { id: "persona",  title: "Persona",  value: "Urban women 25–35, corporate athletes.",               position: [ 2.0,-1.4, -0.8], color: PALETTE[2] },
-  { id: "voice",    title: "Voice",    value: "Calm, confident, technical.",                          position: [ 0, -2.4,  0.4], color: PALETTE[3] },
-  { id: "values",   title: "Values",   value: "Honesty · Craft · Longevity.",                         position: [-2.0,-1.4,  0.8], color: PALETTE[4] },
-  { id: "promise",  title: "Promise",  value: "Built to last. Designed to disappear.",                position: [-2.4, 1.0, -0.6], color: PALETTE[5] },
-];
+// No seeded demo strategy — the 3D graph renders only real backend nodes
+// (mapped via backendNodesToGraph); it stays empty until a brief is approved.
+export const initialNodes3D: Node3D[] = [];
 
 export function backendNodesToGraph(nodes: BrandNode[]): Node3D[] {
   return nodes.map((n, i) => {

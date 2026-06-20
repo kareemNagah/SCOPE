@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Read(//home/kngh/**)",
-      "Bash(ssh -T git@github.com)"
+      "Bash(ssh -T git@github.com)",
+      "mcp__codex__codex",
+      "Bash(git --no-pager diff -- src/lib/api.ts src/styles.css)"
     ]
   }
 }

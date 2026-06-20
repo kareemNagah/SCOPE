@@ -10,7 +10,8 @@ refined through an AI copilot chat. It is a two-process app:
 
 - **Frontend** — TanStack Start + React 19 + Vite + Tailwind v4 (`src/`), talks to the backend over HTTP.
 - **Backend** — FastAPI + LangGraph + DSPy (`backend/app/`), served on `:8000`, Postgres for storage,
-  **OpenRouter** as the LLM gateway (not the Anthropic API directly).
+  **OpenRouter** as the LLM gateway (not the Anthropic API directly). Local development runs the API
+  and Postgres as Docker containers inside WSL 2.
 
 The frontend hardcodes the backend at `http://localhost:8000` (`src/lib/api.ts`).
 
@@ -20,13 +21,14 @@ Frontend (uses **bun**; `package-lock.json` also present):
 - `bun run dev` — Vite dev server (frontend only).
 - `bun run build` — production build (also the main typecheck/build gate).
 - `bun run lint` — ESLint. `bun run format` — Prettier.
-- `bun run dev:full` / `bun run scope` — Windows PowerShell scripts that boot frontend + backend together
-  (`scripts/*.ps1`); non-Windows users run the two processes manually.
+- `bun run dev:full` / `bun run scope` — bash wrappers around `scripts/scope-dev.sh` for the WSL 2
+  workflow: start Docker Compose services for api/db, then start Vite.
 
 Backend (from `backend/`, Python 3.11):
 - `pip install -r requirements.txt`
 - `uvicorn app.main:app --reload --port 8000`
-- Full stack incl. Postgres: `docker compose up` (api on `:8000`, db on `:5432`).
+- Full stack incl. Postgres: `docker compose up` from WSL 2 (api container on `:8000`, db container on
+  `:5432`).
 - Requires `backend/.env` with at least `OPENROUTER_API_KEY` (see `app/core/config.py` for all settings;
   `OPENAI_API_KEY`/`OPENAI_API_BASE` are accepted aliases). Tables auto-create on startup (dev convenience).
 
@@ -78,3 +80,10 @@ editing prompt text:
 - Chat mode (`free` / `guided`) persists to `localStorage` (`scope_chat_mode`); auth token is
   `scope_token`. Styling is Tailwind v4 with CSS custom props (`--scope-purple`, `--gradient-brand`, etc.)
   defined in `src/styles.css`.
+
+# Orchestration rules
+- Opus plans, reviews, and authors prompts. Codex (MCP tool `codex`) implements.
+- Always Plan Mode first. Delegate implementation to `codex` with a full spec. Review the diff.
+- Only hand-edit small glue. Use `codex-reply` to correct Codex instead of rewriting.
+- Run lint + typecheck + tests after each task. Report results.
+- Arabic-first product: every user-facing surface must support RTL and Arabic typography.

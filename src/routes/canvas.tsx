@@ -109,7 +109,17 @@ function CanvasPage() {
                 font_name: payload.fontName,
                 brand_context: `Palette mood: ${payload.palette.mood}. Colors: ${payload.palette.colors.join(", ")}.`,
               });
-              navigate({ to: "/logo", search: { session: sessionId } });
+              navigate({
+                to: "/logo",
+                search: {
+                  session: sessionId,
+                  paletteName: payload.palette.name,
+                  paletteColors: payload.palette.colors.join(","),
+                  fontName: payload.fontName,
+                  conceptName: payload.concept,
+                  wordmark: payload.brandName,
+                },
+              });
             }}
             onBack={() => setShowGate(false)}
           />
@@ -149,7 +159,12 @@ function CanvasBody({
       if (lowerTitle.includes("mission") || lowerTitle.includes("purpose")) icon = Target;
       else if (lowerTitle.includes("vision")) icon = Eye;
       else if (lowerTitle.includes("persona") || lowerTitle.includes("audience")) icon = User;
-      else if (lowerTitle.includes("voice") || lowerTitle.includes("tone") || lowerTitle.includes("message")) icon = MessageSquare;
+      else if (
+        lowerTitle.includes("voice") ||
+        lowerTitle.includes("tone") ||
+        lowerTitle.includes("message")
+      )
+        icon = MessageSquare;
       else if (lowerTitle.includes("value")) icon = Shield;
       else if (lowerTitle.includes("promise") || lowerTitle.includes("hook")) icon = Clock;
 

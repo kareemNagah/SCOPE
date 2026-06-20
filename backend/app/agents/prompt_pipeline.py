@@ -10,6 +10,15 @@ import dspy
 
 from app.agents.model_factory import create_dspy_lm
 
+import re
+
+_ARABIC_RE = re.compile(r"[؀-ۿ]")
+
+
+def detect_language(text: str) -> str:
+    """Return 'ar' if the text contains Arabic script, else 'en'."""
+    return "ar" if _ARABIC_RE.search(text or "") else "en"
+
 GUIDE_PATH = Path(__file__).resolve().parent / "resources" / "scope_prompt_guide.md"
 REGION_LABELS = {
     "usa": "USA",
@@ -19,25 +28,48 @@ REGION_LABELS = {
 
 
 class EnhanceBriefPrompt(dspy.Signature):
-    """Turn a loose founder prompt into a prompt suited for SCOPE's pipeline."""
+    """Turn a loose founder prompt into a prompt suited for SCOPE's pipeline.
+
+    LANGUAGE DIRECTION: Write the output fields (`enhanced_prompt` and `image_analysis_focus`) in the specified `language` ("ar" -> Modern Standard Arabic; "en" -> English).
+    If language is "ar", write ONLY in Modern Standard Arabic. If language is "en", write ONLY in English.
+    """
 
     guide_excerpt: str = dspy.InputField()
     region: str = dspy.InputField()
+    language: str = dspy.InputField()
     user_prompt: str = dspy.InputField()
     enhanced_prompt: str = dspy.OutputField()
     image_analysis_focus: str = dspy.OutputField()
 
 
 class GenerateMarketingBrief(dspy.Signature):
-    """Generate a brief and marketing standards package from text and vision notes."""
+    """Generate a brief and marketing standards package from text and vision notes.
+
+    LANGUAGE DIRECTION (CRITICAL):
+    You MUST write EVERY single text field (including brand_name, summary, pillars mission/vision/persona/values/voice/promise, audience, positioning, value_proposition, reasons_to_believe, recommended_channels, compliance_cultural_notes, visual_direction, visual_cues, competitive_signals, and recommended_next) in the specified `language` ("ar" -> Modern Standard Arabic that reads naturally to a Gulf/Egyptian/Levantine founder; "en" -> English).
+    - If `language` is "ar", write ONLY in Modern Standard Arabic. Do not mix English and Arabic, and write all paragraphs and list items in clean Arabic.
+    - If `language` is "en", write ONLY in English.
+    - Preserve brand names exactly as the founder wrote them; never translate a supplied name.
+    - `brand_name_ar` = Arabic-script name (a faithful Arabic rendering if only a Latin name was given; "" if Arabic is genuinely not appropriate).
+    - `brand_name_en` = Latin-script name or clean transliteration.
+    - `brand_name` = primary display name in the working `language`.
+    - `one_line_concept` = one vivid sentence capturing the brand concept.
+    - `market_lens` = one sentence on the regional/market lens shaping the brand.
+    - `visual_direction` = 4-6 concrete, image-ready art-direction phrases (medium, palette, materials, lighting, composition, regional/cultural motifs) each usable as a standalone moodboard image prompt.
+    """
 
     guide_excerpt: str = dspy.InputField()
     region: str = dspy.InputField()
+    language: str = dspy.InputField()
     enhanced_prompt: str = dspy.InputField()
     vision_notes: str = dspy.InputField()
     brand_name: str = dspy.OutputField()
+    brand_name_ar: str = dspy.OutputField()
+    brand_name_en: str = dspy.OutputField()
     industry: str = dspy.OutputField()
+    one_line_concept: str = dspy.OutputField()
     summary: str = dspy.OutputField()
+    market_lens: str = dspy.OutputField()
     mission: str = dspy.OutputField()
     vision: str = dspy.OutputField()
     persona: str = dspy.OutputField()
@@ -51,6 +83,7 @@ class GenerateMarketingBrief(dspy.Signature):
     recommended_channels: list[str] = dspy.OutputField()
     compliance_cultural_notes: list[str] = dspy.OutputField()
     competitive_context: str = dspy.OutputField()
+    visual_direction: list[str] = dspy.OutputField()
     visual_cues: list[str] = dspy.OutputField()
     competitive_signals: list[str] = dspy.OutputField()
     recommended_next: str = dspy.OutputField()
@@ -68,6 +101,7 @@ class EvaluateBriefQuality(dspy.Signature):
 @dataclass
 class BriefPipelineResult:
     region: str
+    language: str
     enhanced_prompt: str
     image_analysis_focus: str
     generated: dict[str, Any]
@@ -131,8 +165,12 @@ def _prediction_value(prediction: Any, key: str, default: Any = "") -> Any:
 def _brief_payload(generated: Any) -> dict[str, Any]:
     return {
         "brand_name": _prediction_value(generated, "brand_name"),
+        "brand_name_ar": _prediction_value(generated, "brand_name_ar"),
+        "brand_name_en": _prediction_value(generated, "brand_name_en"),
         "industry": _prediction_value(generated, "industry"),
+        "one_line_concept": _prediction_value(generated, "one_line_concept"),
         "summary": _prediction_value(generated, "summary"),
+        "market_lens": _prediction_value(generated, "market_lens"),
         "pillars": {
             "mission": _prediction_value(generated, "mission"),
             "vision": _prediction_value(generated, "vision"),
@@ -152,6 +190,7 @@ def _brief_payload(generated: Any) -> dict[str, Any]:
             ),
             "competitive_context": _prediction_value(generated, "competitive_context"),
         },
+        "visual_direction": list(_prediction_value(generated, "visual_direction", [])),
         "visual_cues": list(_prediction_value(generated, "visual_cues", [])),
         "competitive_signals": list(_prediction_value(generated, "competitive_signals", [])),
         "recommended_next": _prediction_value(generated, "recommended_next"),
@@ -166,6 +205,7 @@ def run_brief_pipeline(
     modules: tuple[Any, Any, Any] | None = None,
 ) -> BriefPipelineResult:
     normalized_region = normalize_region(region)
+    language = detect_language(user_prompt)
     guide_excerpt = brief_guide_excerpt()
     enhancer, generator, evaluator = modules or _default_modules()
 
@@ -173,12 +213,14 @@ def run_brief_pipeline(
         enhanced = enhancer(
             guide_excerpt=guide_excerpt,
             region=region_label(normalized_region),
+            language=language,
             user_prompt=user_prompt,
         )
 
         generated = generator(
             guide_excerpt=guide_excerpt,
             region=region_label(normalized_region),
+            language=language,
             enhanced_prompt=enhanced.enhanced_prompt,
             vision_notes=vision_notes or "No reference-image notes were extracted.",
         )
@@ -198,6 +240,7 @@ def run_brief_pipeline(
             generated = generator(
                 guide_excerpt=guide_excerpt,
                 region=region_label(normalized_region),
+                language=language,
                 enhanced_prompt=refined_prompt,
                 vision_notes=vision_notes or "No reference-image notes were extracted.",
             )
@@ -209,6 +252,7 @@ def run_brief_pipeline(
 
     return BriefPipelineResult(
         region=normalized_region,
+        language=language,
         enhanced_prompt=enhanced.enhanced_prompt,
         image_analysis_focus=enhanced.image_analysis_focus,
         generated=generated_payload,

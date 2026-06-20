@@ -5,7 +5,13 @@ import { ChevronRight, Globe, Maximize2, Minimize2, Sparkles, Undo2 } from "luci
 import { toast } from "sonner";
 
 import { CreativeCard, type CreativeCardAction } from "@/components/ui/creative-card";
-import { api, type ChatMode, type ChatSuggestion, type ProposedPalette } from "@/lib/api";
+import {
+  api,
+  type ChatHistoryItem,
+  type ChatMode,
+  type ChatSuggestion,
+  type ProposedPalette,
+} from "@/lib/api";
 import { useCanvas, type EditEvent } from "./CanvasContext";
 
 type Role = "user" | "assistant" | "system" | "choices" | "palettes";
@@ -191,7 +197,12 @@ export function CopilotChat({ sessionId }: { sessionId: string }) {
         if (!active) return;
         if (history && history.length > 0) {
           setMessages(
-            history.map((m: any) => ({ id: m.id, role: m.role as Role, text: m.text, at: m.at })),
+            history.map((m: ChatHistoryItem) => ({
+              id: m.id,
+              role: m.role as Role,
+              text: m.text,
+              at: m.at,
+            })),
           );
         } else {
           setMessages(makeSeed(mode, activeNode?.title ?? null, lang));
@@ -289,12 +300,17 @@ export function CopilotChat({ sessionId }: { sessionId: string }) {
         }
 
         if (mode === "guided") {
+          const dynamicChoices = (res.suggestions ?? [])
+            .map((suggestion) => suggestion.prompt)
+            .filter(Boolean);
           toAppend.push({
             id: `choices-${reply.id}`,
             role: "choices",
             text: t.nextMoves,
             at: Date.now(),
-            choices: getChoices(mode, activeNode?.title, lang),
+            choices: dynamicChoices.length
+              ? dynamicChoices
+              : getChoices(mode, activeNode?.title, lang),
           });
         }
         setMessages((m) => [...m, ...toAppend]);
@@ -452,6 +468,7 @@ export function CopilotChat({ sessionId }: { sessionId: string }) {
                 <PaletteSuggestionCards
                   label={m.text}
                   palettes={m.palettes}
+                  sessionId={sessionId}
                   lang={lang}
                   dir={dir}
                   loading={loading}
@@ -585,7 +602,7 @@ function AssistantBubble({
           className={`absolute ${isRtl ? "right-0" : "left-0"} bottom-3 top-3 w-[2px] rounded-full bg-gradient-to-b from-scope-pink to-scope-orange`}
           aria-hidden
         />
-        <div className={`whitespace-pre-wrap ${isRtl ? "pr-3" : "pl-3"}`}>{text}</div>
+        <MarkdownContent text={text} className={isRtl ? "pr-3" : "pl-3"} />
         {suggestions.length > 0 && (
           <div
             className={`mt-3 space-y-1.5 border-t border-slate-800/60 pt-3 ${isRtl ? "pr-3" : "pl-3"}`}
@@ -613,6 +630,209 @@ function AssistantBubble({
       </div>
     </div>
   );
+}
+
+function MarkdownContent({ text, className }: { text: string; className?: string }) {
+  return (
+    <div className={`space-y-2 ${className ?? ""}`}>
+      {parseMarkdownBlocks(text).map((block, index) => {
+        if (block.type === "heading") {
+          return (
+            <p
+              key={`heading-${index}`}
+              className="font-display text-[15px] font-semibold leading-snug text-slate-50"
+            >
+              {renderInlineMarkdown(block.text)}
+            </p>
+          );
+        }
+        if (block.type === "code") {
+          return (
+            <pre
+              key={`code-${index}`}
+              className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-[12px] leading-relaxed text-slate-200"
+            >
+              <code>{block.text}</code>
+            </pre>
+          );
+        }
+        if (block.type === "quote") {
+          return (
+            <blockquote
+              key={`quote-${index}`}
+              className="border-scope-purple/40 text-slate-300 ltr:border-l-2 ltr:pl-3 rtl:border-r-2 rtl:pr-3"
+            >
+              {renderInlineMarkdown(block.text)}
+            </blockquote>
+          );
+        }
+        if (block.type === "list") {
+          const ListTag = block.ordered ? "ol" : "ul";
+          return (
+            <ListTag
+              key={`list-${index}`}
+              className={`${block.ordered ? "list-decimal" : "list-disc"} space-y-1 ltr:pl-5 rtl:pr-5`}
+            >
+              {block.items.map((item, itemIndex) => (
+                <li key={`${item}-${itemIndex}`} className="pl-1">
+                  {renderInlineMarkdown(item)}
+                </li>
+              ))}
+            </ListTag>
+          );
+        }
+        return (
+          <p key={`paragraph-${index}`} className="whitespace-pre-wrap">
+            {renderInlineMarkdown(block.text)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+type MarkdownBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "heading"; text: string }
+  | { type: "quote"; text: string }
+  | { type: "code"; text: string }
+  | { type: "list"; ordered: boolean; items: string[] };
+
+function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  const blocks: MarkdownBlock[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      index += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith("```")) {
+      const codeLines: string[] = [];
+      index += 1;
+      while (index < lines.length && !lines[index].trim().startsWith("```")) {
+        codeLines.push(lines[index]);
+        index += 1;
+      }
+      blocks.push({ type: "code", text: codeLines.join("\n") });
+      index += 1;
+      continue;
+    }
+
+    const heading = trimmed.match(/^#{1,3}\s+(.+)$/);
+    if (heading) {
+      blocks.push({ type: "heading", text: heading[1] });
+      index += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith(">")) {
+      const quoteLines: string[] = [];
+      while (index < lines.length && lines[index].trim().startsWith(">")) {
+        quoteLines.push(lines[index].trim().replace(/^>\s?/, ""));
+        index += 1;
+      }
+      blocks.push({ type: "quote", text: quoteLines.join("\n") });
+      continue;
+    }
+
+    const listMatch = trimmed.match(/^(?:[-*]\s+|\d+[.)]\s+)(.+)$/);
+    if (listMatch) {
+      const ordered = /^\d+[.)]\s+/.test(trimmed);
+      const items: string[] = [];
+      while (index < lines.length) {
+        const current = lines[index].trim();
+        const currentMatch = current.match(ordered ? /^\d+[.)]\s+(.+)$/ : /^[-*]\s+(.+)$/);
+        if (!currentMatch) break;
+        items.push(currentMatch[1]);
+        index += 1;
+      }
+      blocks.push({ type: "list", ordered, items });
+      continue;
+    }
+
+    const paragraphLines: string[] = [];
+    while (index < lines.length) {
+      const current = lines[index];
+      const currentTrimmed = current.trim();
+      if (
+        !currentTrimmed ||
+        currentTrimmed.startsWith("```") ||
+        currentTrimmed.startsWith(">") ||
+        currentTrimmed.match(/^#{1,3}\s+/) ||
+        currentTrimmed.match(/^(?:[-*]\s+|\d+[.)]\s+)/)
+      ) {
+        break;
+      }
+      paragraphLines.push(current);
+      index += 1;
+    }
+    blocks.push({ type: "paragraph", text: paragraphLines.join("\n") });
+  }
+
+  return blocks;
+}
+
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const tokenPattern =
+    /(\[[^\]]+\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\*([^*]+)\*)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = tokenPattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    if (match[1] && match[2]) {
+      const label = match[1].slice(1, match[1].indexOf("]"));
+      parts.push(
+        <a
+          key={`link-${match.index}`}
+          href={match[2]}
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium text-scope-violet underline decoration-scope-violet/40 underline-offset-2 hover:text-scope-pink"
+        >
+          {label}
+        </a>,
+      );
+    } else if (match[3]) {
+      parts.push(
+        <strong key={`bold-${match.index}`} className="font-semibold text-slate-50">
+          {match[3]}
+        </strong>,
+      );
+    } else if (match[4]) {
+      parts.push(
+        <code
+          key={`code-${match.index}`}
+          className="rounded bg-slate-950/80 px-1.5 py-0.5 font-mono text-[12px] text-slate-100"
+        >
+          {match[4]}
+        </code>,
+      );
+    } else if (match[5]) {
+      parts.push(
+        <em key={`em-${match.index}`} className="text-slate-100">
+          {match[5]}
+        </em>,
+      );
+    }
+    lastIndex = tokenPattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
 }
 
 function ChoiceCards({
@@ -751,12 +971,14 @@ function isLightHex(hex: string): boolean {
 function PaletteSuggestionCards({
   label,
   palettes,
+  sessionId,
   lang,
   dir,
   loading,
 }: {
   label: string;
   palettes: ProposedPalette[];
+  sessionId: string;
   lang: Lang;
   dir: string;
   loading: boolean;
@@ -779,7 +1001,9 @@ function PaletteSuggestionCards({
           {label}
         </p>
       )}
-      <div className={`grid gap-2 ${palettes.length <= 2 ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-3"}`}>
+      <div
+        className={`grid gap-2 ${palettes.length <= 2 ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-3"}`}
+      >
         {palettes.map((palette) => {
           const isSelected = selectedPalette?.name === palette.name;
           return (
@@ -787,18 +1011,17 @@ function PaletteSuggestionCards({
               key={palette.name}
               type="button"
               disabled={loading}
-              onClick={() =>
-                setSelectedPalette(
-                  isSelected
-                    ? null
-                    : {
-                        name: palette.name,
-                        colors: palette.colors,
-                        mood: palette.mood,
-                        usage_note: palette.usage_note,
-                      },
-                )
-              }
+              onClick={() => {
+                const nextPalette = isSelected
+                  ? null
+                  : {
+                      name: palette.name,
+                      colors: palette.colors,
+                      mood: palette.mood,
+                      usage_note: palette.usage_note,
+                    };
+                setSelectedPalette(nextPalette);
+              }}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 280, damping: 28 }}

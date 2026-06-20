@@ -127,7 +127,8 @@ npm run format       # Prettier
 | Docker works only with `sudo`             | You haven't restarted WSL since install — `wsl --shutdown` |
 | Daemon not started                        | `sudo systemctl start docker` (and `sudo systemctl enable docker`) |
 | Changes not showing in browser            | `npm run restart:fe` then `Ctrl+Shift+R` |
-| Port already in use                       | The dev script auto-frees ports 8000/8080/8081 |
+| Frontend port already in use              | The dev script auto-frees Vite ports 8080/8081 |
+| Backend port already in use               | Stop the conflicting service or run `docker compose down`; the dev script leaves Docker's `:8000` port alone |
 | API not responding                        | `docker compose logs api` |
 | DB connection error                       | `docker compose ps` — confirm `db` is healthy |
 | `backend/.env is missing`                 | Create it with at least `OPENROUTER_API_KEY` (see CLAUDE.md) |

@@ -87,8 +87,18 @@ async def prepare_context(state: AgentState) -> dict[str, str]:
 
 async def chatbot(state: AgentState) -> dict[str, list[BaseMessage]]:
     llm = _build_llm()
+    is_arabic = "Language: ar" in state.get("brief_context", "")
+    lang_instruction = ""
+    if is_arabic:
+        lang_instruction = (
+            "\n\nCRITICAL LANGUAGE RULE:\n"
+            "- The working language is Arabic.\n"
+            "- You MUST write all thoughts, explanations, suggestions, and tool calls (node titles and content) in Modern Standard Arabic only.\n"
+            "- Do not use English for any user-facing text, brand pillars, or node updates.\n"
+        )
     system_prompt = (
         BRAND_ARCHITECT_PROMPT
+        + lang_instruction
         + "\n\nBRIEF-FIRST RULES:\n"
         + "- The approved brief is the source of truth.\n"
         + "- Stay aligned with the selected region and marketing standards.\n"
