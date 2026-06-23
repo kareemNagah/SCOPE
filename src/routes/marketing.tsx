@@ -142,7 +142,9 @@ function MarketingPage() {
                                 ? "border-transparent text-white"
                                 : "border-slate-700/60 bg-slate-800/50 text-slate-400"
                           }`}
-                          style={active || isDone ? { background: "var(--gradient-brand)" } : undefined}
+                          style={
+                            active || isDone ? { background: "var(--gradient-brand)" } : undefined
+                          }
                         >
                           {isDone ? <Check size={13} /> : <Icon size={14} />}
                         </span>
@@ -199,9 +201,7 @@ function MarketingPage() {
                           onNext={() => setStep(7)}
                         />
                       )}
-                      {step === 7 && (
-                        <CreativeStep engine={engine} onRefract={() => refract(7)} />
-                      )}
+                      {step === 7 && <CreativeStep engine={engine} onRefract={() => refract(7)} />}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -280,11 +280,19 @@ function Refracting({ message }: { message: string }) {
         <div className="relative mx-auto h-36 w-36">
           <span
             className="absolute inset-0 animate-spin rounded-full border-2 border-transparent"
-            style={{ borderTopColor: "var(--scope-purple)", borderRightColor: "var(--scope-pink)", animationDuration: "1.6s" }}
+            style={{
+              borderTopColor: "var(--scope-purple)",
+              borderRightColor: "var(--scope-pink)",
+              animationDuration: "1.6s",
+            }}
           />
           <span
             className="absolute inset-4 animate-spin rounded-full border-2 border-transparent"
-            style={{ borderTopColor: "var(--scope-blue)", animationDuration: "2.4s", animationDirection: "reverse" }}
+            style={{
+              borderTopColor: "var(--scope-blue)",
+              animationDuration: "2.4s",
+              animationDirection: "reverse",
+            }}
           />
           <span
             className="absolute inset-8 animate-spin rounded-full border-2 border-transparent"
@@ -323,7 +331,9 @@ function StepHead({
           {icon}
         </span>
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">{label}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">
+            {label}
+          </p>
           <p className="text-[11px] text-slate-500">{note}</p>
         </div>
       </div>
@@ -332,13 +342,7 @@ function StepHead({
   );
 }
 
-function PrimaryButton({
-  children,
-  onClick,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
+function PrimaryButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -350,13 +354,7 @@ function PrimaryButton({
   );
 }
 
-function GhostButton({
-  children,
-  onClick,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
+function GhostButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -386,11 +384,7 @@ function reveal(index: number) {
   };
 }
 
-function Footer({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function Footer({ children }: { children: React.ReactNode }) {
   return (
     <div className="mt-7 flex items-center justify-end gap-3 border-t border-slate-800/60 pt-5">
       {children}
@@ -492,7 +486,10 @@ function BlueprintStep({ engine, onNext }: { engine: MarketingEngine; onNext: ()
             className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-4"
           >
             <div className="mb-3 flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--gradient-brand)" }} />
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ background: "var(--gradient-brand)" }}
+              />
               <h3 className="text-[13px] font-semibold text-slate-100">{block.title}</h3>
             </div>
             <div className="space-y-2.5">
@@ -505,7 +502,9 @@ function BlueprintStep({ engine, onNext }: { engine: MarketingEngine; onNext: ()
       </div>
 
       <div className="mt-4 rounded-2xl border border-slate-800/60 bg-slate-900/40 p-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Brand spine</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+          Brand spine
+        </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Archetype" value={textAt(identity, "brand_identity", "brand_archetype")} />
           <Field label="Voice" value={textAt(identity, "brand_identity", "tone_of_voice")} />
@@ -523,13 +522,7 @@ function BlueprintStep({ engine, onNext }: { engine: MarketingEngine; onNext: ()
   );
 }
 
-function AudienceStep({
-  personas,
-  onNext,
-}: {
-  personas: MarketingPersona[];
-  onNext: () => void;
-}) {
+function AudienceStep({ personas, onNext }: { personas: MarketingPersona[]; onNext: () => void }) {
   return (
     <section>
       <StepHead
@@ -610,7 +603,10 @@ function VisualDnaStep({
           </motion.div>
         ))}
       </div>
-      <div className="mt-4 overflow-hidden rounded-2xl p-px" style={{ background: "var(--gradient-brand)" }}>
+      <div
+        className="mt-4 overflow-hidden rounded-2xl p-px"
+        style={{ background: "var(--gradient-brand)" }}
+      >
         <div className="rounded-[15px] bg-[#0D0D1A] p-5">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
             Creative rule
@@ -819,8 +815,8 @@ function CreativeStep({ engine, onRefract }: { engine: MarketingEngine; onRefrac
         </GhostButton>
       </Footer>
       <div className="mt-3 flex items-center gap-2 text-[12px] text-slate-500">
-        <Target size={13} className="text-scope-violet" /> Ship Variant A to cold reach, Variant B to
-        retargeting.
+        <Target size={13} className="text-scope-violet" /> Ship Variant A to cold reach, Variant B
+        to retargeting.
       </div>
     </section>
   );
