@@ -303,8 +303,10 @@ function StudioLanding() {
     if (!prompt.trim() || isLoading) return;
 
     setIsLoading(true);
-    toast.message("Analyzing Reference Material...", {
-      description: "Extracting brand attributes and visual cues.",
+    toast.message(files.length ? "Analyzing Reference Material..." : "Generating from Written Brief...", {
+      description: files.length
+        ? "Extracting brand attributes and visual cues."
+        : "No reference image attached. Building the brand brief from your text.",
     });
 
     const effectivePrompt = brandNameInput.trim()
@@ -325,7 +327,8 @@ function StudioLanding() {
       toast.success("Starter Brief Generated");
     } catch (error) {
       console.error("Failed to generate brief:", error);
-      toast.error("Generation failed. Verify the backend is running.");
+      const message = error instanceof Error ? error.message : "Verify the backend is running.";
+      toast.error("Generation failed.", { description: message });
     } finally {
       setIsLoading(false);
     }
