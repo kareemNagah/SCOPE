@@ -52,3 +52,4 @@ backend/.env
 /Build prompt.md
 /claude.sh
 backend/*.db*
+/design-system/scope-studio/MASTER.md
