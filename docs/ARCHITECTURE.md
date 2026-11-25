@@ -1,7 +1,5 @@
 # SCOPE Studio — Architecture & Ground Truth
 
-> Living inventory produced in **Task 0** of `Build prompt.md` and updated after Tasks 0.5–4.
-> Captures the current implementation paths, contracts, state model, and known validation constraints.
 
 ## 1. What it is
 

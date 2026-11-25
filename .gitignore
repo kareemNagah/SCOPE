@@ -40,3 +40,15 @@ backend/.env
 
 # scope-dev local state
 .scope-dev/
+
+.env
+.env.*
+!.env.example
+/.agent/
+/.claude/
+/.lovable/
+/AGENTS.md
+/CLAUDE.md
+/Build prompt.md
+/claude.sh
+backend/*.db*

@@ -1,5 +1,5 @@
 """
-SCOPE Studio — Application Settings.
+SCOPE Studio â€” Application Settings.
 
 All configuration is loaded from environment variables via Pydantic BaseSettings.
 Use `get_settings()` as a FastAPI dependency for injection.
@@ -16,10 +16,10 @@ class Settings(BaseSettings):
     """Central configuration loaded from .env / environment variables."""
 
     # --- Database ---
-    database_url: str = "postgresql+asyncpg://scope_user:scope_pass@localhost:5432/scope_db"
+    database_url: str
 
     # --- JWT Auth ---
-    jwt_secret: str = "dev-secret-change-me-in-production"
+    jwt_secret: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = 24
 
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
 
     # --- App ---
     app_env: Literal["development", "staging", "production"] = "development"
-    cors_allow_origin_regex: str = r"https?://.*"
+    cors_allow_origin_regex: str = r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -59,5 +59,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Cached singleton — returns the same Settings instance across the app."""
+    """Cached singleton â€” returns the same Settings instance across the app."""
     return Settings()

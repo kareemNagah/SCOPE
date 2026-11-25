@@ -36,12 +36,14 @@ Docker Desktop from Windows entirely if you no longer need it.
 
 ---
 
+Complete the environment setup in [the README](README.md) first. For a backend outside Docker, also set `DATABASE_URL` to your local asyncpg connection URL.
+
 ## Run the project
 
 ```bash
 npm run dev:full          # full stack: build + start db/api containers, then frontend
 npm run dev:full:nobuild  # same but skip the docker image rebuild (faster)
-npm run restart:fe        # frontend only (use after AI/code edits — fastest)
+npm run restart:fe        # frontend only (use after frontend edits — fastest)
 npm run stop              # stop everything (containers + frontend)
 ```
 
@@ -96,7 +98,7 @@ uvicorn app.main:app --reload --port 8000
 
 ---
 
-## After AI / Claude Code edits
+## After frontend edits
 
 Vite uses filesystem polling (`vite.config.ts`) to detect edits on the Windows
 mount. After code changes:
@@ -131,7 +133,7 @@ npm run format       # Prettier
 | Backend port already in use               | Stop the conflicting service or run `docker compose down`; the dev script leaves Docker's `:8000` port alone |
 | API not responding                        | `docker compose logs api` |
 | DB connection error                       | `docker compose ps` — confirm `db` is healthy |
-| `backend/.env is missing`                 | Create it with at least `OPENROUTER_API_KEY` (see CLAUDE.md) |
+| `backend/.env is missing`                 | Create it as described in README.md |
 
 ---
 

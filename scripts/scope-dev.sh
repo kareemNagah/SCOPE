@@ -117,7 +117,7 @@ free_port 8080; free_port 8081
 
 # ── 2. ensure backend/.env ───────────────────────────────────────────────────
 if [ ! -f backend/.env ]; then
-  err "backend/.env is missing. Create it with at least OPENROUTER_API_KEY (see CLAUDE.md)."
+  err "backend/.env is missing. Create it as described in README.md."
   exit 1
 fi
 
